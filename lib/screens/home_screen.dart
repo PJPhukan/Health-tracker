@@ -1,0 +1,253 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/health_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
+import '../widgets/summary_widgets.dart';
+import 'suggestion_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: AppAnimations.entranceDuration,
+  )..forward();
+
+  @override
+  void dispose() {
+    _entrance.dispose();
+    super.dispose();
+  }
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<HealthProvider>();
+    final summary = provider.today;
+
+    return Scaffold(
+      floatingActionButton: _GlowFab(
+        onPressed: () {
+          context.read<HealthProvider>().getSuggestion();
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SuggestionScreen()));
+        },
+      ),
+      body: Column(
+        children: [
+          // Fixed gradient header — stays put while the content scrolls.
+          _HomeHeader(greeting: _greeting()),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.teal,
+              onRefresh: provider.loadToday,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        if (provider.loading && summary == null)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 64),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.teal),
+                            ),
+                          )
+                        else if (summary != null) ...[
+                          StaggeredEntrance(
+                            animation: _entrance,
+                            index: 0,
+                            child: DailySummaryCard(summary: summary),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          StaggeredEntrance(
+                            animation: _entrance,
+                            index: 1,
+                            child: const _GoalNote(),
+                          ),
+                          if (summary.meals.isNotEmpty ||
+                              summary.workouts.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            StaggeredEntrance(
+                              animation: _entrance,
+                              index: 2,
+                              child: RecentActivityCard(summary: summary),
+                            ),
+                          ],
+                        ],
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── HOME HEADER ────────────────────────────────────────────────────────────
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.greeting});
+  final String greeting;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppGradients.headerGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      greeting,
+                      style: t.displaySmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('EEEE, d MMMM').format(DateTime.now()),
+                      style: t.bodyLarge?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Decorative icon
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.12),
+                ),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── GLOW FAB ───────────────────────────────────────────────────────────────
+
+class _GlowFab extends StatelessWidget {
+  const _GlowFab({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.35),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton(
+        onPressed: onPressed,
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        highlightElevation: 0,
+        tooltip: 'Get Suggestion',
+        child: const Icon(Icons.auto_awesome_rounded),
+      ),
+    );
+  }
+}
+
+// ─── GOAL NOTE ──────────────────────────────────────────────────────────────
+
+class _GoalNote extends StatelessWidget {
+  const _GoalNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF0F7F4),
+            Color(0xFFF7F4EE),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        boxShadow: kSoftShadow,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const IconBadge(
+            icon: Icons.flag_rounded,
+            color: AppColors.teal,
+            size: 32,
+            iconSize: 16,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Aiming for 1,738+ kcal \u00b7 48g+ protein \u00b7 5\u20137k steps \u00b7 7\u20138h sleep',
+              style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

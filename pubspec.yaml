@@ -1,0 +1,39 @@
+name: health_tracker
+description: A personal health tracking app with AI meal suggestions.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite: ^2.3.3
+  sqflite_common_ffi_web: ^0.4.5+4
+  path: ^1.9.0
+  http: ^1.2.2
+  provider: ^6.1.2
+  intl: ^0.19.0
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+
+# Native launch screen — the very first frame, before Flutter boots.
+# Regenerate with: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#F7F4EE"
+  image: assets/branding/logo.png
+  android_12:
+    color: "#F7F4EE"
+    image: assets/branding/logo.png
+  web: false

@@ -1,0 +1,93 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/health_provider.dart';
+import '../theme/app_theme.dart';
+import 'history_screen.dart';
+import 'home_screen.dart';
+import 'log_entry_screen.dart';
+import 'pantry_screen.dart';
+
+/// Root scaffold: Home / Log / History behind a premium bottom nav.
+class MainShell extends StatefulWidget {
+  const MainShell({super.key});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => context.read<HealthProvider>().loadToday());
+  }
+
+  void _onNav(int i) {
+    setState(() => _index = i);
+    if (i == 0) context.read<HealthProvider>().loadToday();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AnimatedSwitcher(
+        duration: AppAnimations.shortDuration,
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: KeyedSubtree(
+          key: ValueKey(_index),
+          child: _pages[_index],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: _onNav,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.add_circle_outline_rounded),
+              selectedIcon: Icon(Icons.add_circle_rounded),
+              label: 'Log',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.kitchen_outlined),
+              selectedIcon: Icon(Icons.kitchen_rounded),
+              label: 'Pantry',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.calendar_today_outlined),
+              selectedIcon: Icon(Icons.calendar_today_rounded),
+              label: 'History',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  late final _pages = <Widget>[
+    const HomeScreen(),
+    const LogEntryScreen(),
+    const PantryScreen(),
+    const HistoryScreen(),
+  ];
+}

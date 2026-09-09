@@ -1,0 +1,259 @@
+// Data classes for all local DB tables.
+// Dates are stored as ISO yyyy-MM-dd strings; timestamps as full ISO-8601.
+
+String dateKey(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+enum MealType { breakfast, lunch, dinner, snack }
+
+MealType mealTypeFromString(String s) =>
+    MealType.values.firstWhere((e) => e.name == s, orElse: () => MealType.snack);
+
+class MealEntry {
+  final int? id;
+  final String date; // yyyy-MM-dd
+  final MealType mealType;
+  final String foodDescription;
+  final String timestamp; // ISO-8601
+
+  MealEntry({
+    this.id,
+    required this.date,
+    required this.mealType,
+    required this.foodDescription,
+    required this.timestamp,
+  });
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'date': date,
+        'mealType': mealType.name,
+        'foodDescription': foodDescription,
+        'timestamp': timestamp,
+      };
+
+  factory MealEntry.fromMap(Map<String, Object?> m) => MealEntry(
+        id: m['id'] as int?,
+        date: m['date'] as String,
+        mealType: mealTypeFromString(m['mealType'] as String),
+        foodDescription: m['foodDescription'] as String,
+        timestamp: m['timestamp'] as String,
+      );
+}
+
+class WorkoutEntry {
+  final int? id;
+  final String date;
+  final String exerciseType;
+  final int durationMinutes;
+  final String notes;
+  final String timestamp;
+
+  WorkoutEntry({
+    this.id,
+    required this.date,
+    required this.exerciseType,
+    required this.durationMinutes,
+    this.notes = '',
+    required this.timestamp,
+  });
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'date': date,
+        'exerciseType': exerciseType,
+        'durationMinutes': durationMinutes,
+        'notes': notes,
+        'timestamp': timestamp,
+      };
+
+  factory WorkoutEntry.fromMap(Map<String, Object?> m) => WorkoutEntry(
+        id: m['id'] as int?,
+        date: m['date'] as String,
+        exerciseType: m['exerciseType'] as String,
+        durationMinutes: (m['durationMinutes'] as num).toInt(),
+        notes: (m['notes'] as String?) ?? '',
+        timestamp: m['timestamp'] as String,
+      );
+}
+
+class SleepEntry {
+  final int? id;
+  final String date;
+  final String sleepTime; // HH:mm
+  final String wakeTime; // HH:mm
+  final double totalHours;
+
+  SleepEntry({
+    this.id,
+    required this.date,
+    required this.sleepTime,
+    required this.wakeTime,
+    required this.totalHours,
+  });
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'date': date,
+        'sleepTime': sleepTime,
+        'wakeTime': wakeTime,
+        'totalHours': totalHours,
+      };
+
+  factory SleepEntry.fromMap(Map<String, Object?> m) => SleepEntry(
+        id: m['id'] as int?,
+        date: m['date'] as String,
+        sleepTime: m['sleepTime'] as String,
+        wakeTime: m['wakeTime'] as String,
+        totalHours: (m['totalHours'] as num).toDouble(),
+      );
+
+  /// Computes hours between a sleep and wake time, wrapping past midnight.
+  static double hoursBetween(String sleep, String wake) {
+    final s = _mins(sleep);
+    final w = _mins(wake);
+    final diff = (w - s + 24 * 60) % (24 * 60);
+    return diff / 60.0;
+  }
+
+  static int _mins(String hhmm) {
+    final parts = hhmm.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+}
+
+class WeightEntry {
+  final int? id;
+  final String date;
+  final double weightKg;
+
+  WeightEntry({this.id, required this.date, required this.weightKg});
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'date': date,
+        'weightKg': weightKg,
+      };
+
+  factory WeightEntry.fromMap(Map<String, Object?> m) => WeightEntry(
+        id: m['id'] as int?,
+        date: m['date'] as String,
+        weightKg: (m['weightKg'] as num).toDouble(),
+      );
+}
+
+class StepsEntry {
+  final int? id;
+  final String date;
+  final int stepCount;
+
+  StepsEntry({this.id, required this.date, required this.stepCount});
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'date': date,
+        'stepCount': stepCount,
+      };
+
+  factory StepsEntry.fromMap(Map<String, Object?> m) => StepsEntry(
+        id: m['id'] as int?,
+        date: m['date'] as String,
+        stepCount: (m['stepCount'] as num).toInt(),
+      );
+}
+
+class PantryItem {
+  final int? id;
+  final String itemName;
+  final String quantity; // free text: "2kg", "low", "plenty", or ''
+  final bool isLow;
+  final String lastUpdated; // ISO-8601
+
+  PantryItem({
+    this.id,
+    required this.itemName,
+    this.quantity = '',
+    this.isLow = false,
+    required this.lastUpdated,
+  });
+
+  PantryItem copyWith({String? itemName, String? quantity, bool? isLow}) =>
+      PantryItem(
+        id: id,
+        itemName: itemName ?? this.itemName,
+        quantity: quantity ?? this.quantity,
+        isLow: isLow ?? this.isLow,
+        lastUpdated: DateTime.now().toIso8601String(),
+      );
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'itemName': itemName,
+        'quantity': quantity,
+        'isLow': isLow ? 1 : 0,
+        'lastUpdated': lastUpdated,
+      };
+
+  factory PantryItem.fromMap(Map<String, Object?> m) => PantryItem(
+        id: m['id'] as int?,
+        itemName: m['itemName'] as String,
+        quantity: (m['quantity'] as String?) ?? '',
+        isLow: ((m['isLow'] as num?) ?? 0) != 0,
+        lastUpdated: m['lastUpdated'] as String,
+      );
+}
+
+class SuggestionEntry {
+  final int? id;
+  final String date;
+  final String prompt;
+  final String response;
+  final String timestamp;
+
+  SuggestionEntry({
+    this.id,
+    required this.date,
+    required this.prompt,
+    required this.response,
+    required this.timestamp,
+  });
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'date': date,
+        'prompt': prompt,
+        'response': response,
+        'timestamp': timestamp,
+      };
+
+  factory SuggestionEntry.fromMap(Map<String, Object?> m) => SuggestionEntry(
+        id: m['id'] as int?,
+        date: m['date'] as String,
+        prompt: m['prompt'] as String,
+        response: m['response'] as String,
+        timestamp: m['timestamp'] as String,
+      );
+}
+
+/// A day's worth of logged data, used for the home summary and AI prompt.
+class DailySummary {
+  final String date;
+  final List<MealEntry> meals;
+  final List<WorkoutEntry> workouts;
+  final SleepEntry? sleep;
+  final StepsEntry? steps;
+  final WeightEntry? weight;
+
+  DailySummary({
+    required this.date,
+    required this.meals,
+    required this.workouts,
+    this.sleep,
+    this.steps,
+    this.weight,
+  });
+
+  bool get workoutDone => workouts.isNotEmpty;
+  double get sleepHours => sleep?.totalHours ?? 0;
+  int get stepCount => steps?.stepCount ?? 0;
+}
