@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../database/health_repository.dart';
 import '../models/models.dart';
+import '../models/user_profile.dart';
 import '../services/gemini_service.dart';
 
 enum SuggestionStatus { idle, loading, success, error }
@@ -13,6 +14,17 @@ class HealthProvider extends ChangeNotifier {
 
   final HealthRepository _repo;
   final GeminiService _ai;
+
+  /// Current daily targets, pushed in from [ProfileController] via a
+  /// ChangeNotifierProxyProvider. Falls back to v1's fixed numbers.
+  HealthGoals _goals = HealthGoals.starter;
+  HealthGoals get goals => _goals;
+
+  void syncGoals(HealthGoals next) {
+    if (next == _goals) return;
+    _goals = next;
+    notifyListeners();
+  }
 
   DailySummary? _today;
   DailySummary? get today => _today;
@@ -218,7 +230,7 @@ class HealthProvider extends ChangeNotifier {
     try {
       final summary = _today ?? await _repo.getDailySummary();
       final pantry = await _repo.getAllPantryItems();
-      final result = await _ai.getSuggestion(summary, pantry);
+      final result = await _ai.getSuggestion(summary, pantry, _goals);
       _suggestionText = result.text;
       _suggestionStatus = SuggestionStatus.success;
 

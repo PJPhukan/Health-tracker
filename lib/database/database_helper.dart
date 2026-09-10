@@ -7,7 +7,9 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'health_tracker.db';
-  static const _dbVersion = 2;
+  // v2: pantry_items.  v3: user_profiles (offline mirror of the Firestore
+  // profile).  v4: meal_favorites.
+  static const _dbVersion = 4;
 
   Database? _db;
 
@@ -32,6 +34,12 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       await _createPantryTable(db);
     }
+    if (oldVersion < 3) {
+      await _createUserProfileTable(db);
+    }
+    if (oldVersion < 4) {
+      await _createMealFavoritesTable(db);
+    }
   }
 
   Future<void> _createPantryTable(Database db) async {
@@ -44,6 +52,35 @@ class DatabaseHelper {
         lastUpdated TEXT NOT NULL
       )
     ''');
+  }
+
+  /// One row per account (plus the "local" pseudo-user). Mirrors the Firestore
+  /// `users/{uid}` document so profile + goals are available offline.
+  Future<void> _createUserProfileTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        profileId TEXT PRIMARY KEY,
+        json TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createMealFavoritesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS meal_favorites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profileId TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        mealType TEXT NOT NULL DEFAULT 'snack',
+        useCount INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_meal_favorites_profile '
+        'ON meal_favorites(profileId)');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -111,5 +148,7 @@ class DatabaseHelper {
     }
 
     await _createPantryTable(db);
+    await _createUserProfileTable(db);
+    await _createMealFavoritesTable(db);
   }
 }

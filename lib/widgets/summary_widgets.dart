@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
-import '../services/health_goal.dart';
+import '../models/user_profile.dart';
 import '../theme/app_theme.dart';
 import 'common.dart';
 
-GoalStatus _sleepStatus(DailySummary s) {
+GoalStatus _sleepStatus(DailySummary s, HealthGoals g) {
   if (s.sleep == null) return GoalStatus.neutral;
-  return s.sleepHours >= HealthGoal.sleepMinHours - 0.25
+  return s.sleepHours >= g.sleepMinHours - 0.25
       ? GoalStatus.onTrack
       : GoalStatus.behind;
 }
 
-GoalStatus _stepsStatus(DailySummary s) {
+GoalStatus _stepsStatus(DailySummary s, HealthGoals g) {
   if (s.steps == null) return GoalStatus.neutral;
-  return s.stepCount >= HealthGoal.stepsMin
-      ? GoalStatus.onTrack
-      : GoalStatus.behind;
+  return s.stepCount >= g.stepsMin ? GoalStatus.onTrack : GoalStatus.behind;
 }
 
 GoalStatus _mealsStatus(DailySummary s) {
@@ -89,9 +87,14 @@ class _StatTile extends StatelessWidget {
 
 /// Today-at-a-glance card used on Home — with entrance animation.
 class DailySummaryCard extends StatefulWidget {
-  const DailySummaryCard({super.key, required this.summary});
+  const DailySummaryCard({
+    super.key,
+    required this.summary,
+    required this.goals,
+  });
 
   final DailySummary summary;
+  final HealthGoals goals;
 
   @override
   State<DailySummaryCard> createState() => _DailySummaryCardState();
@@ -209,6 +212,7 @@ class _DailySummaryCardState extends State<DailySummaryCard>
   @override
   Widget build(BuildContext context) {
     final s = widget.summary;
+    final g = widget.goals;
     final tiles = [
       _StatTile(
         icon: Icons.restaurant_menu_rounded,
@@ -229,13 +233,13 @@ class _DailySummaryCardState extends State<DailySummaryCard>
         label: 'sleep',
         value:
             s.sleep == null ? '\u2014' : '${s.sleepHours.toStringAsFixed(1)}h',
-        status: _sleepStatus(s),
+        status: _sleepStatus(s, g),
       ),
       _StatTile(
         icon: Icons.directions_walk_rounded,
         label: 'steps',
         value: s.steps == null ? '\u2014' : _compact(s.stepCount),
-        status: _stepsStatus(s),
+        status: _stepsStatus(s, g),
       ),
     ];
 
