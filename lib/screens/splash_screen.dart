@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import 'main_shell.dart';
+import 'auth/auth_gate.dart';
 
-/// Premium animated splash shown once Flutter is up, before [MainShell].
+/// Premium animated splash shown once Flutter is up, before [AuthGate].
 ///
 /// A single [AnimationController] drives every element through
 /// [Interval]-based curves. The logo first appears dead-centre — matching the
 /// native launch screen so the hand-off is seamless — then glides up into its
 /// wordmark position as the app name and tagline fade in beneath it. When the
-/// timeline finishes the screen fades and eases down into the home shell.
+/// timeline finishes the screen fades and eases down into the auth gate.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -70,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen>
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 520),
         reverseTransitionDuration: const Duration(milliseconds: 220),
-        pageBuilder: (_, __, ___) => const MainShell(),
+        pageBuilder: (_, __, ___) => const AuthGate(),
         transitionsBuilder: (_, animation, __, child) {
           final eased =
               CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
