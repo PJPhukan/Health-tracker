@@ -408,4 +408,7 @@ class HealthProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  /// Past AI suggestions, newest first — for the suggestion history screen.
+  Future<List<SuggestionEntry>> suggestionHistory() => _repo.getSuggestions();
 }

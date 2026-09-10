@@ -153,6 +153,14 @@ class HealthRepository {
 
   Future<int> deleteSleep(int id) => _delete('sleep_entries', id);
 
+  Future<List<SleepEntry>> getRecentSleep({int days = 7}) async {
+    final rows = await (await _db).query('sleep_entries',
+        where: _live('date >= ?'),
+        whereArgs: [_since(days)],
+        orderBy: 'date ASC');
+    return rows.map(SleepEntry.fromMap).toList();
+  }
+
   // ── Weight ───────────────────────────────────────────────────────────────
 
   Future<int> insertWeight(WeightEntry e) =>
@@ -303,5 +311,16 @@ class HealthRepository {
         'SELECT DISTINCT date FROM meal_entries WHERE syncDeleted = 0 '
         'ORDER BY date DESC');
     return rows.map((r) => r['date'] as String).toList();
+  }
+
+  /// date -> number of meals logged that day, over the last [days] days.
+  Future<Map<String, int>> mealCountsByDay({int days = 7}) async {
+    final rows = await (await _db).rawQuery(
+        'SELECT date, COUNT(*) AS n FROM meal_entries '
+        'WHERE date >= ? AND syncDeleted = 0 GROUP BY date',
+        [_since(days)]);
+    return {
+      for (final r in rows) r['date'] as String: (r['n'] as num).toInt(),
+    };
   }
 }
