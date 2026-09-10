@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'providers/auth_controller.dart';
 import 'providers/health_provider.dart';
+import 'providers/profile_controller.dart';
 import 'screens/splash_screen.dart';
 import 'services/firebase_bootstrap.dart';
 import 'theme/app_theme.dart';
@@ -29,7 +30,14 @@ class HealthTrackerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()),
-        ChangeNotifierProvider(create: (_) => HealthProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileController()),
+        // HealthProvider owns the local logs; it also needs the current daily
+        // targets, which live in ProfileController — pushed in on every change.
+        ChangeNotifierProxyProvider<ProfileController, HealthProvider>(
+          create: (_) => HealthProvider(),
+          update: (_, profile, health) =>
+              (health ?? HealthProvider())..syncGoals(profile.goals),
+        ),
       ],
       child: MaterialApp(
         title: 'Stock Plate',

@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
+import '../providers/profile_controller.dart';
+import '../models/user_profile.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/summary_widgets.dart';
@@ -40,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final provider = context.watch<HealthProvider>();
     final summary = provider.today;
+    final goals = context.watch<ProfileController>().goals;
 
     return Scaffold(
       floatingActionButton: _GlowFab(
@@ -77,13 +80,14 @@ class _HomeScreenState extends State<HomeScreen>
                           StaggeredEntrance(
                             animation: _entrance,
                             index: 0,
-                            child: DailySummaryCard(summary: summary),
+                            child: DailySummaryCard(
+                                summary: summary, goals: goals),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           StaggeredEntrance(
                             animation: _entrance,
                             index: 1,
-                            child: const _GoalNote(),
+                            child: _GoalNote(goals: goals),
                           ),
                           if (summary.meals.isNotEmpty ||
                               summary.workouts.isNotEmpty) ...[
@@ -222,7 +226,8 @@ class _GlowFab extends StatelessWidget {
 // ─── GOAL NOTE ──────────────────────────────────────────────────────────────
 
 class _GoalNote extends StatelessWidget {
-  const _GoalNote();
+  const _GoalNote({required this.goals});
+  final HealthGoals goals;
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +258,10 @@ class _GoalNote extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Aiming for 1,738+ kcal \u00b7 48g+ protein \u00b7 5\u20137k steps \u00b7 7\u20138h sleep',
+              'Aiming for ${goals.calories}+ kcal \u00b7 ${goals.proteinGrams}g+ '
+              'protein \u00b7 ${_k(goals.stepsMin)}\u2013${_k(goals.stepsMax)} '
+              'steps \u00b7 ${_h(goals.sleepMinHours)}\u2013'
+              '${_h(goals.sleepMaxHours)}h sleep',
               style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
           ),
@@ -261,4 +269,10 @@ class _GoalNote extends StatelessWidget {
       ),
     );
   }
+
+  static String _k(int n) =>
+      n % 1000 == 0 ? '${n ~/ 1000}k' : (n / 1000).toStringAsFixed(1);
+
+  static String _h(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 }

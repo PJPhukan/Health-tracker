@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/models.dart';
-import 'health_goal.dart';
+import '../models/user_profile.dart';
 
 class AiException implements Exception {
   final String message;
@@ -33,7 +33,8 @@ class GeminiService {
 
   bool get hasKey => _geminiKey.isNotEmpty;
 
-  String buildPrompt(DailySummary s, List<PantryItem> pantry) {
+  String buildPrompt(
+      DailySummary s, List<PantryItem> pantry, HealthGoals goals) {
     final stock = pantry.isEmpty
         ? 'nothing recorded'
         : pantry.map((p) {
@@ -65,7 +66,7 @@ Here's what I ate/did today:
 - Sleep: $sleep
 - Steps: $steps
 
-My goal is: ${HealthGoal.promptText}
+My goal is: ${goals.promptText}
 
 Based on what I have in stock, suggest what I should eat next (specify meal:
 breakfast/lunch/dinner). Include approximate calories and protein and one sentence
@@ -81,8 +82,9 @@ available. Keep it under 130 words.
   Future<SuggestionResult> getSuggestion(
     DailySummary summary,
     List<PantryItem> pantry,
+    HealthGoals goals,
   ) async {
-    final prompt = buildPrompt(summary, pantry);
+    final prompt = buildPrompt(summary, pantry, goals);
     if (!hasKey) {
       throw AiException(
           'No API key configured. Pass --dart-define=GEMINI_API_KEY=… when running.');
