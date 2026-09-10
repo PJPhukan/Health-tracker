@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "916437613429",
+    "project_id": "stock-plate",
+    "storage_bucket": "stock-plate.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:916437613429:android:6eb8fcb9db3fe87a4ef13c",
+        "android_client_info": {
+          "package_name": "com.example.health_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIEaAWiZuf5mblXJXJKdCF9Wmes5emew4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

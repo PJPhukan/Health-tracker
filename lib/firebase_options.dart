@@ -1,65 +1,63 @@
-// Firebase configuration.
+// File generated for the `stock-plate` Firebase project.
 //
-// ─── REPLACE THIS FILE ──────────────────────────────────────────────────────
-// These are PLACEHOLDER values so the project compiles and runs before a
-// Firebase project exists. While the sentinel below is present the app runs in
-// "local-only" mode: no auth, no cloud sync, everything else works.
+// Regenerate with:  flutterfire configure --project=stock-plate
 //
-// To wire up a real project:
-//   dart pub global activate flutterfire_cli
-//   flutterfire configure
-// which overwrites this file with your real values (and drops
-// android/app/google-services.json + ios/Runner/GoogleService-Info.plist).
-// ────────────────────────────────────────────────────────────────────────────
-
+// The [DefaultFirebaseOptions.isConfigured] getter is a small local addition
+// (see services/firebase_bootstrap.dart): it stays false only if this file is
+// reverted to placeholder values, so the app can fall back to local-only mode
+// instead of crashing.
+// ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Marker that identifies the un-configured placeholder values below.
-const _placeholder = 'REPLACE_ME';
-
+/// [FirebaseOptions] for use with your Firebase apps.
 class DefaultFirebaseOptions {
-  /// False while this file still holds placeholder values, which is how the
-  /// app decides to run without Firebase instead of crashing on startup.
-  static bool get isConfigured => !_android.apiKey.contains(_placeholder);
+  /// False only while this file holds placeholder values — lets the app run
+  /// without Firebase rather than crash on startup.
+  static bool get isConfigured => !web.apiKey.contains('REPLACE_ME');
 
   static FirebaseOptions get currentPlatform {
-    if (kIsWeb) return _web;
+    if (kIsWeb) {
+      return web;
+    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return _android;
+        return android;
       case TargetPlatform.iOS:
+        return ios;
       case TargetPlatform.macOS:
-        return _ios;
-      default:
-        return _web;
+        return ios;
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return web;
     }
   }
 
-  static const FirebaseOptions _android = FirebaseOptions(
-    apiKey: '${_placeholder}_ANDROID_API_KEY',
-    appId: '1:000000000000:android:0000000000000000000000',
-    messagingSenderId: '000000000000',
-    projectId: 'stock-plate',
-    storageBucket: 'stock-plate.firebasestorage.app',
-  );
-
-  static const FirebaseOptions _ios = FirebaseOptions(
-    apiKey: '${_placeholder}_IOS_API_KEY',
-    appId: '1:000000000000:ios:0000000000000000000000',
-    messagingSenderId: '000000000000',
-    projectId: 'stock-plate',
-    storageBucket: 'stock-plate.firebasestorage.app',
-    iosBundleId: 'com.example.healthTracker',
-  );
-
-  static const FirebaseOptions _web = FirebaseOptions(
-    apiKey: '${_placeholder}_WEB_API_KEY',
-    appId: '1:000000000000:web:0000000000000000000000',
-    messagingSenderId: '000000000000',
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDT6IKtU4q2bGyvNRrIxZ15QEFT9uvMel4',
+    appId: '1:916437613429:web:f55900634eb55c094ef13c',
+    messagingSenderId: '916437613429',
     projectId: 'stock-plate',
     authDomain: 'stock-plate.firebaseapp.com',
     storageBucket: 'stock-plate.firebasestorage.app',
+    measurementId: 'G-PCXMR1YJ99',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDIEaAWiZuf5mblXJXJKdCF9Wmes5emew4',
+    appId: '1:916437613429:android:6eb8fcb9db3fe87a4ef13c',
+    messagingSenderId: '916437613429',
+    projectId: 'stock-plate',
+    storageBucket: 'stock-plate.firebasestorage.app',
+  );
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDMAupottV0yIIKowv5e1p8ihwK1-UPXEc',
+    appId: '1:916437613429:ios:aa096f0ba71604644ef13c',
+    messagingSenderId: '916437613429',
+    projectId: 'stock-plate',
+    storageBucket: 'stock-plate.firebasestorage.app',
+    iosBundleId: 'com.example.healthTracker',
   );
 }
