@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../database/health_repository.dart';
+import '../database/sync_service.dart';
 import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../services/gemini_service.dart';
@@ -13,13 +14,25 @@ class HealthProvider extends ChangeNotifier {
     HealthRepository? repo,
     GeminiService? ai,
     HealthStepsService? healthSteps,
-  })  : _repo = repo ?? HealthRepository(),
+    SyncService? sync,
+  })  : _sync = sync,
+        _repo = repo ?? HealthRepository(sync: sync),
         _ai = ai ?? GeminiService(),
         _healthSteps = healthSteps ?? HealthStepsService();
 
   final HealthRepository _repo;
   final GeminiService _ai;
   final HealthStepsService _healthSteps;
+  final SyncService? _sync;
+
+  /// Pull the cloud copy down, flush pending local writes, then refresh the UI.
+  /// Called on login and on every app resume; a no-op in local-only mode.
+  Future<void> syncNow() async {
+    if (_sync == null || !_sync.enabled) return;
+    await _sync.syncNow();
+    await loadToday();
+    await loadFavorites();
+  }
 
   /// Current daily targets, pushed in from [ProfileController] via a
   /// ChangeNotifierProxyProvider. Falls back to v1's fixed numbers.

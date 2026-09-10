@@ -27,6 +27,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       final health = context.read<HealthProvider>();
       await health.loadToday();
       await health.loadFavorites();
+      // Pull the cloud copy down + flush pending local writes (no-op offline
+      // or in local-only mode), then refresh.
+      await health.syncNow();
       // Silently pull today's steps from Health Connect / HealthKit if the
       // permission is already granted. Never prompts here.
       await health.initHealthSync();
@@ -44,6 +47,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       final health = context.read<HealthProvider>();
+      health.syncNow();
       health.refreshStepsFromHealth().then((_) => health.loadToday());
     }
   }

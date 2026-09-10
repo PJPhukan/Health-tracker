@@ -1,5 +1,10 @@
 // Data classes for all local DB tables.
 // Dates are stored as ISO yyyy-MM-dd strings; timestamps as full ISO-8601.
+//
+// `syncId` (v3): a stable, cross-device id that doubles as the Firestore
+// document id under `users/{uid}/<collection>/`. Null only for rows created
+// before v3 that haven't been through the one-time migration yet. The local
+// autoincrement `id` stays the key the UI passes around.
 
 String dateKey(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -11,6 +16,7 @@ MealType mealTypeFromString(String s) =>
 
 class MealEntry {
   final int? id;
+  final String? syncId;
   final String date; // yyyy-MM-dd
   final MealType mealType;
   final String foodDescription;
@@ -18,6 +24,7 @@ class MealEntry {
 
   MealEntry({
     this.id,
+    this.syncId,
     required this.date,
     required this.mealType,
     required this.foodDescription,
@@ -26,6 +33,7 @@ class MealEntry {
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'date': date,
         'mealType': mealType.name,
         'foodDescription': foodDescription,
@@ -34,6 +42,7 @@ class MealEntry {
 
   factory MealEntry.fromMap(Map<String, Object?> m) => MealEntry(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         date: m['date'] as String,
         mealType: mealTypeFromString(m['mealType'] as String),
         foodDescription: m['foodDescription'] as String,
@@ -43,6 +52,7 @@ class MealEntry {
 
 class WorkoutEntry {
   final int? id;
+  final String? syncId;
   final String date;
   final String exerciseType;
   final int durationMinutes;
@@ -51,6 +61,7 @@ class WorkoutEntry {
 
   WorkoutEntry({
     this.id,
+    this.syncId,
     required this.date,
     required this.exerciseType,
     required this.durationMinutes,
@@ -60,6 +71,7 @@ class WorkoutEntry {
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'date': date,
         'exerciseType': exerciseType,
         'durationMinutes': durationMinutes,
@@ -69,6 +81,7 @@ class WorkoutEntry {
 
   factory WorkoutEntry.fromMap(Map<String, Object?> m) => WorkoutEntry(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         date: m['date'] as String,
         exerciseType: m['exerciseType'] as String,
         durationMinutes: (m['durationMinutes'] as num).toInt(),
@@ -79,6 +92,7 @@ class WorkoutEntry {
 
 class SleepEntry {
   final int? id;
+  final String? syncId;
   final String date;
   final String sleepTime; // HH:mm
   final String wakeTime; // HH:mm
@@ -86,6 +100,7 @@ class SleepEntry {
 
   SleepEntry({
     this.id,
+    this.syncId,
     required this.date,
     required this.sleepTime,
     required this.wakeTime,
@@ -94,6 +109,7 @@ class SleepEntry {
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'date': date,
         'sleepTime': sleepTime,
         'wakeTime': wakeTime,
@@ -102,6 +118,7 @@ class SleepEntry {
 
   factory SleepEntry.fromMap(Map<String, Object?> m) => SleepEntry(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         date: m['date'] as String,
         sleepTime: m['sleepTime'] as String,
         wakeTime: m['wakeTime'] as String,
@@ -124,19 +141,22 @@ class SleepEntry {
 
 class WeightEntry {
   final int? id;
+  final String? syncId;
   final String date;
   final double weightKg;
 
-  WeightEntry({this.id, required this.date, required this.weightKg});
+  WeightEntry({this.id, this.syncId, required this.date, required this.weightKg});
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'date': date,
         'weightKg': weightKg,
       };
 
   factory WeightEntry.fromMap(Map<String, Object?> m) => WeightEntry(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         date: m['date'] as String,
         weightKg: (m['weightKg'] as num).toDouble(),
       );
@@ -144,19 +164,22 @@ class WeightEntry {
 
 class StepsEntry {
   final int? id;
+  final String? syncId;
   final String date;
   final int stepCount;
 
-  StepsEntry({this.id, required this.date, required this.stepCount});
+  StepsEntry({this.id, this.syncId, required this.date, required this.stepCount});
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'date': date,
         'stepCount': stepCount,
       };
 
   factory StepsEntry.fromMap(Map<String, Object?> m) => StepsEntry(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         date: m['date'] as String,
         stepCount: (m['stepCount'] as num).toInt(),
       );
@@ -164,6 +187,7 @@ class StepsEntry {
 
 class PantryItem {
   final int? id;
+  final String? syncId;
   final String itemName;
   final String quantity; // free text: "2kg", "low", "plenty", or ''
   final bool isLow;
@@ -171,6 +195,7 @@ class PantryItem {
 
   PantryItem({
     this.id,
+    this.syncId,
     required this.itemName,
     this.quantity = '',
     this.isLow = false,
@@ -180,6 +205,7 @@ class PantryItem {
   PantryItem copyWith({String? itemName, String? quantity, bool? isLow}) =>
       PantryItem(
         id: id,
+        syncId: syncId,
         itemName: itemName ?? this.itemName,
         quantity: quantity ?? this.quantity,
         isLow: isLow ?? this.isLow,
@@ -188,6 +214,7 @@ class PantryItem {
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'itemName': itemName,
         'quantity': quantity,
         'isLow': isLow ? 1 : 0,
@@ -196,6 +223,7 @@ class PantryItem {
 
   factory PantryItem.fromMap(Map<String, Object?> m) => PantryItem(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         itemName: m['itemName'] as String,
         quantity: (m['quantity'] as String?) ?? '',
         isLow: ((m['isLow'] as num?) ?? 0) != 0,
@@ -208,6 +236,7 @@ class PantryItem {
 /// shared device.
 class MealFavorite {
   final int? id;
+  final String? syncId;
   final String profileId;
   final String name;
   final String description;
@@ -217,6 +246,7 @@ class MealFavorite {
 
   MealFavorite({
     this.id,
+    this.syncId,
     required this.profileId,
     required this.name,
     this.description = '',
@@ -233,6 +263,7 @@ class MealFavorite {
   }) =>
       MealFavorite(
         id: id,
+        syncId: syncId,
         profileId: profileId,
         name: name ?? this.name,
         description: description ?? this.description,
@@ -243,6 +274,7 @@ class MealFavorite {
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'profileId': profileId,
         'name': name,
         'description': description,
@@ -253,6 +285,7 @@ class MealFavorite {
 
   factory MealFavorite.fromMap(Map<String, Object?> m) => MealFavorite(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         profileId: (m['profileId'] as String?) ?? 'local',
         name: m['name'] as String,
         description: (m['description'] as String?) ?? '',
@@ -269,6 +302,7 @@ class MealFavorite {
 
 class SuggestionEntry {
   final int? id;
+  final String? syncId;
   final String date;
   final String prompt;
   final String response;
@@ -276,6 +310,7 @@ class SuggestionEntry {
 
   SuggestionEntry({
     this.id,
+    this.syncId,
     required this.date,
     required this.prompt,
     required this.response,
@@ -284,6 +319,7 @@ class SuggestionEntry {
 
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
         'date': date,
         'prompt': prompt,
         'response': response,
@@ -292,6 +328,7 @@ class SuggestionEntry {
 
   factory SuggestionEntry.fromMap(Map<String, Object?> m) => SuggestionEntry(
         id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
         date: m['date'] as String,
         prompt: m['prompt'] as String,
         response: m['response'] as String,
