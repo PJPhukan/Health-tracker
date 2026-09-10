@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import '../models/user_profile.dart';
 import '../providers/auth_controller.dart';
 import '../providers/profile_controller.dart';
+import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'onboarding/review_goals_screen.dart';
 import 'profile_edit_screen.dart';
+import 'subscription_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -97,6 +99,10 @@ class SettingsScreen extends StatelessWidget {
                     label: const Text('Edit profile details'),
                   ),
                 ],
+                const SizedBox(height: AppSpacing.lg),
+                const MetaLabel('Subscription'),
+                const SizedBox(height: AppSpacing.xs),
+                const _SubscriptionCard(),
                 const SizedBox(height: AppSpacing.lg),
                 if (auth.stage == AuthStage.signedIn)
                   OutlinedButton.icon(
@@ -261,6 +267,53 @@ class _ProfileDetailsCard extends StatelessWidget {
             '${profile.activityLevel.label} · ${profile.primaryGoal.label}',
             style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final sub = context.watch<SubscriptionService>();
+    final t = Theme.of(context).textTheme;
+    final premium = sub.isPremium;
+
+    return SoftCard(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          IconBadge(
+            icon: premium
+                ? Icons.workspace_premium_rounded
+                : Icons.auto_awesome_rounded,
+            color: premium ? AppColors.onTrack : AppColors.accent,
+            size: 40,
+            iconSize: 20,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(premium ? 'Premium' : 'Free plan', style: t.titleMedium),
+                Text(
+                  premium
+                      ? 'No ads. Manage or restore your subscription.'
+                      : 'Go Premium to remove ads.',
+                  style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColors.textSecondary),
         ],
       ),
     );

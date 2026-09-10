@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
+import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
@@ -49,6 +50,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       final health = context.read<HealthProvider>();
       health.syncNow();
       health.refreshStepsFromHealth().then((_) => health.loadToday());
+      context.read<SubscriptionService>().refresh();
     }
   }
 
