@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../models/models.dart';
 import '../providers/health_provider.dart';
+import '../services/health_steps_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'favorites_screen.dart';
 
 class LogEntryScreen extends StatefulWidget {
   const LogEntryScreen({super.key});
@@ -246,6 +248,7 @@ class _TodayLogHistory extends StatelessWidget {
           color: AppColors.accent,
           title: _capitalize(meal.mealType.name),
           subtitle: meal.foodDescription,
+          meal: meal,
         ),
       for (final workout in summary.workouts)
         _TodayHistoryRow(
@@ -308,6 +311,8 @@ class _TodayLogHistory extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (rows[i].meal != null)
+                  _FavoriteStar(meal: rows[i].meal!),
               ],
             ),
             if (i != rows.length - 1) ...[
@@ -331,12 +336,47 @@ class _TodayHistoryRow {
     required this.color,
     required this.title,
     required this.subtitle,
+    this.meal,
   });
 
   final IconData icon;
   final Color color;
   final String title;
   final String subtitle;
+
+  /// Set for meal rows — enables the "save as favorite" star.
+  final MealEntry? meal;
+}
+
+/// Star toggle that saves a logged meal as a quick-add favorite.
+class _FavoriteStar extends StatelessWidget {
+  const _FavoriteStar({required this.meal});
+  final MealEntry meal;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<HealthProvider>();
+    final saved = provider.isFavorite(meal.foodDescription);
+    return IconButton(
+      visualDensity: VisualDensity.compact,
+      tooltip: saved ? 'Already a favorite' : 'Save as favorite',
+      onPressed: saved
+          ? null
+          : () async {
+              await context.read<HealthProvider>().favoriteFromMeal(meal);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Saved to favorites')),
+                );
+              }
+            },
+      icon: Icon(
+        saved ? Icons.star_rounded : Icons.star_border_rounded,
+        color: saved ? AppColors.accent : AppColors.textSecondary,
+        size: 20,
+      ),
+    );
+  }
 }
 
 class _Field extends StatelessWidget {
@@ -461,8 +501,20 @@ class _MealFormState extends State<_MealForm> {
     super.dispose();
   }
 
+  Future<void> _saveAsFavorite() async {
+    if (_desc.text.trim().isEmpty) return;
+    await context
+        .read<HealthProvider>()
+        .addFavorite(name: _desc.text, mealType: _type);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Saved to favorites')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final favorites = context.watch<HealthProvider>().favorites;
     return _FormScaffold(
       saveLabel: 'Save meal',
       canSave: _desc.text.trim().isNotEmpty,
@@ -472,6 +524,14 @@ class _MealFormState extends State<_MealForm> {
         await widget.onSaved();
       },
       fields: [
+        if (favorites.isNotEmpty)
+          _MealFavoritesRow(
+            favorites: favorites,
+            onTap: (fav) async {
+              await context.read<HealthProvider>().logFavorite(fav);
+              await widget.onSaved();
+            },
+          ),
         _Field(
           label: 'Meal type',
           icon: Icons.restaurant_rounded,
@@ -504,6 +564,67 @@ class _MealFormState extends State<_MealForm> {
             maxLines: 3,
             decoration: const InputDecoration(
                 hintText: 'e.g. Oats with banana and peanut butter'),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _desc.text.trim().isEmpty ? null : _saveAsFavorite,
+            icon: const Icon(Icons.star_border_rounded, size: 18),
+            label: const Text('Save as favorite'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontal one-tap quick-add row shown above the meal fields.
+class _MealFavoritesRow extends StatelessWidget {
+  const _MealFavoritesRow({required this.favorites, required this.onTap});
+  final List<MealFavorite> favorites;
+  final Future<void> Function(MealFavorite) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const MetaLabel('Quick add'),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const FavoritesScreen())),
+              style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: const Text('Manage'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: favorites.length,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
+            itemBuilder: (context, i) {
+              final fav = favorites[i];
+              return ActionChip(
+                avatar: const Icon(Icons.add_rounded,
+                    size: 16, color: AppColors.accent),
+                label: Text(fav.name),
+                onPressed: () => onTap(fav),
+                backgroundColor: AppColors.accentSoft,
+                side: const BorderSide(color: AppColors.accentSoft),
+                labelStyle: t.labelLarge?.copyWith(color: AppColors.accent),
+              );
+            },
           ),
         ),
       ],
@@ -771,6 +892,7 @@ class _StepsForm extends StatefulWidget {
 
 class _StepsFormState extends State<_StepsForm> {
   final _steps = TextEditingController();
+  bool _connecting = false;
 
   @override
   void initState() {
@@ -784,9 +906,26 @@ class _StepsFormState extends State<_StepsForm> {
     super.dispose();
   }
 
+  Future<void> _connect() async {
+    setState(() => _connecting = true);
+    final ok = await context.read<HealthProvider>().connectHealthData();
+    if (!mounted) return;
+    setState(() => _connecting = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok
+          ? 'Connected — your steps sync automatically now'
+          : 'Health data access was not granted. You can still enter steps '
+              'manually.'),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<HealthProvider>();
     final n = int.tryParse(_steps.text.trim());
+    final autoTracked = provider.stepsAutoTracked;
+    final todaySteps = provider.today?.steps?.stepCount;
+
     return _FormScaffold(
       saveLabel: 'Save steps',
       canSave: n != null && n >= 0,
@@ -796,8 +935,21 @@ class _StepsFormState extends State<_StepsForm> {
         await widget.onSaved();
       },
       fields: [
+        if (autoTracked)
+          _AutoStepsCard(
+            todaySteps: todaySteps,
+            onRefresh: () =>
+                context.read<HealthProvider>().refreshStepsFromHealth(),
+          )
+        else
+          _ConnectHealthCard(
+            busy: _connecting,
+            unavailable:
+                provider.healthAccess == HealthAccess.unavailable,
+            onConnect: _connect,
+          ),
         _Field(
-          label: 'Step count',
+          label: autoTracked ? 'Or enter manually' : 'Step count',
           icon: Icons.directions_walk_rounded,
           child: TextField(
             controller: _steps,
@@ -806,6 +958,120 @@ class _StepsFormState extends State<_StepsForm> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AutoStepsCard extends StatelessWidget {
+  const _AutoStepsCard({required this.todaySteps, required this.onRefresh});
+  final int? todaySteps;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.onTrackSoft,
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        boxShadow: kSoftShadow,
+      ),
+      child: Row(
+        children: [
+          const IconBadge(
+            icon: Icons.watch_rounded,
+            color: AppColors.onTrack,
+            size: 34,
+            iconSize: 17,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Auto-tracked from health data', style: t.titleMedium),
+                Text(
+                  todaySteps == null
+                      ? 'Syncing today’s steps…'
+                      : "Today: $todaySteps steps",
+                  style: t.bodyMedium
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Sync now',
+            onPressed: onRefresh,
+            icon: const Icon(Icons.sync_rounded, color: AppColors.onTrack),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConnectHealthCard extends StatelessWidget {
+  const _ConnectHealthCard({
+    required this.busy,
+    required this.unavailable,
+    required this.onConnect,
+  });
+  final bool busy;
+  final bool unavailable;
+  final VoidCallback onConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SoftCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const IconBadge(
+                icon: Icons.favorite_rounded,
+                color: AppColors.teal,
+                size: 34,
+                iconSize: 17,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  unavailable
+                      ? 'Health data isn’t available on this device'
+                      : 'Connect health data',
+                  style: t.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            unavailable
+                ? 'Enter your steps manually below.'
+                : 'Let Stock Plate read your step count so you don’t have to '
+                    'type it in.',
+            style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          if (!unavailable) ...[
+            const SizedBox(height: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: busy ? null : onConnect,
+              icon: busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.link_rounded, size: 18),
+              label: Text(busy ? 'Connecting…' : 'Connect'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

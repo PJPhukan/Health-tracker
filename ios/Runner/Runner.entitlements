@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  HealthKit capability for auto step tracking.
+	  NOTE: this file is not enough on its own — open ios/Runner.xcworkspace in
+	  Xcode and add the "HealthKit" capability to the Runner target so Xcode
+	  wires this entitlements file into the build settings and provisioning.
+	-->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
+</dict>
+</plist>

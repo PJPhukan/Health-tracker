@@ -68,5 +68,10 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- Auto step tracking via HealthKit (lib/services/health_steps_service.dart) -->
+		<key>NSHealthShareUsageDescription</key>
+		<string>Stock Plate reads your step count so you don't have to enter it manually.</string>
+		<key>NSHealthUpdateUsageDescription</key>
+		<string>Stock Plate does not write to Health; this is only required by the system.</string>
 	</dict>
 </plist>

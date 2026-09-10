@@ -16,14 +16,36 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => context.read<HealthProvider>().loadToday());
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final health = context.read<HealthProvider>();
+      await health.loadToday();
+      await health.loadFavorites();
+      // Silently pull today's steps from Health Connect / HealthKit if the
+      // permission is already granted. Never prompts here.
+      await health.initHealthSync();
+      await health.loadToday();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      final health = context.read<HealthProvider>();
+      health.refreshStepsFromHealth().then((_) => health.loadToday());
+    }
   }
 
   void _onNav(int i) {
