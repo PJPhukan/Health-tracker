@@ -169,6 +169,35 @@ class HealthRepository {
     return rows.map(PantryItem.fromMap).toList();
   }
 
+  // ---------------- Meal favorites ----------------
+
+  Future<int> insertFavorite(MealFavorite f) async =>
+      (await _db).insert('meal_favorites', f.toMap());
+
+  Future<int> updateFavorite(MealFavorite f) async => (await _db).update(
+        'meal_favorites',
+        f.toMap(),
+        where: 'id = ?',
+        whereArgs: [f.id],
+      );
+
+  Future<int> deleteFavorite(int id) async =>
+      (await _db).delete('meal_favorites', where: 'id = ?', whereArgs: [id]);
+
+  /// Most-used first, then newest — the order the quick-add row shows them in.
+  Future<List<MealFavorite>> getFavorites(String profileId) async {
+    final rows = await (await _db).query('meal_favorites',
+        where: 'profileId = ?',
+        whereArgs: [profileId],
+        orderBy: 'useCount DESC, createdAt DESC');
+    return rows.map(MealFavorite.fromMap).toList();
+  }
+
+  Future<void> bumpFavoriteUse(int id) async {
+    await (await _db).rawUpdate(
+        'UPDATE meal_favorites SET useCount = useCount + 1 WHERE id = ?', [id]);
+  }
+
   // ---------------- Suggestions ----------------
 
   /// Write-only for v1: rows accumulate for a future "past suggestions" screen.

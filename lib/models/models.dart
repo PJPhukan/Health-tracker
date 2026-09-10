@@ -203,6 +203,70 @@ class PantryItem {
       );
 }
 
+/// A reusable "quick add" meal — e.g. "Rice + dal + egg". Stored locally in
+/// `meal_favorites`, scoped to a profile id so accounts don't share them on a
+/// shared device.
+class MealFavorite {
+  final int? id;
+  final String profileId;
+  final String name;
+  final String description;
+  final MealType mealType;
+  final int useCount;
+  final String createdAt;
+
+  MealFavorite({
+    this.id,
+    required this.profileId,
+    required this.name,
+    this.description = '',
+    this.mealType = MealType.snack,
+    this.useCount = 0,
+    required this.createdAt,
+  });
+
+  MealFavorite copyWith({
+    String? name,
+    String? description,
+    MealType? mealType,
+    int? useCount,
+  }) =>
+      MealFavorite(
+        id: id,
+        profileId: profileId,
+        name: name ?? this.name,
+        description: description ?? this.description,
+        mealType: mealType ?? this.mealType,
+        useCount: useCount ?? this.useCount,
+        createdAt: createdAt,
+      );
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        'profileId': profileId,
+        'name': name,
+        'description': description,
+        'mealType': mealType.name,
+        'useCount': useCount,
+        'createdAt': createdAt,
+      };
+
+  factory MealFavorite.fromMap(Map<String, Object?> m) => MealFavorite(
+        id: m['id'] as int?,
+        profileId: (m['profileId'] as String?) ?? 'local',
+        name: m['name'] as String,
+        description: (m['description'] as String?) ?? '',
+        mealType: mealTypeFromString((m['mealType'] as String?) ?? 'snack'),
+        useCount: (m['useCount'] as num?)?.toInt() ?? 0,
+        createdAt: (m['createdAt'] as String?) ??
+            DateTime.now().toIso8601String(),
+      );
+
+  /// What gets written into the meal log when this favorite is tapped.
+  String get loggedDescription =>
+      description.trim().isEmpty ? name : '$name — ${description.trim()}';
+}
+
 class SuggestionEntry {
   final int? id;
   final String date;

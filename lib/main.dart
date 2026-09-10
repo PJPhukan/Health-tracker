@@ -32,11 +32,14 @@ class HealthTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ProfileController()),
         // HealthProvider owns the local logs; it also needs the current daily
-        // targets, which live in ProfileController — pushed in on every change.
-        ChangeNotifierProxyProvider<ProfileController, HealthProvider>(
+        // targets (from ProfileController) and the active profile id (from
+        // AuthController, to scope meal favorites) — pushed in on every change.
+        ChangeNotifierProxyProvider2<AuthController, ProfileController,
+            HealthProvider>(
           create: (_) => HealthProvider(),
-          update: (_, profile, health) =>
-              (health ?? HealthProvider())..syncGoals(profile.goals),
+          update: (_, auth, profile, health) => (health ?? HealthProvider())
+            ..syncGoals(profile.goals)
+            ..syncProfileId(auth.profileId),
         ),
       ],
       child: MaterialApp(

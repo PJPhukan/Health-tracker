@@ -28,8 +28,10 @@ class _AuthGateState extends State<AuthGate> {
   /// Keep [ProfileController] pointed at whoever is signed in. Deferred to a
   /// post-frame callback so `bind()`'s notifyListeners never fires mid-build.
   void _syncProfileBinding(AuthController auth) {
-    if (auth.stage == AuthStage.checking ||
-        auth.stage == AuthStage.signedOut) {
+    if (auth.stage == AuthStage.checking) return;
+    if (auth.stage == AuthStage.signedOut) {
+      // Drop the binding so signing back in (even as the same uid) re-binds.
+      _boundProfileId = null;
       return;
     }
     final wanted = auth.profileId; // uid, or 'local'
