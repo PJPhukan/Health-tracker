@@ -6,6 +6,7 @@ import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/summary_widgets.dart';
+import 'settings_screen.dart';
 import 'suggestion_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -153,18 +154,28 @@ class _HomeHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              // Decorative icon
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.12),
-                ),
-                child: const Icon(
-                  Icons.favorite_rounded,
-                  color: Colors.white,
-                  size: 24,
+              // Doubles as the way into Profile / Settings.
+              Semantics(
+                button: true,
+                label: 'Profile and settings',
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.12),
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
                 ),
               ),
             ],
