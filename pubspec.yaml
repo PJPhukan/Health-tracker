@@ -25,6 +25,7 @@ dependencies:
   uuid: ^4.6.0
   google_mobile_ads: ^9.1.0
   purchases_flutter: ^10.11.0
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

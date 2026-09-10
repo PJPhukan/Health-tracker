@@ -5,6 +5,7 @@ import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
+import 'suggestion_history_screen.dart';
 
 class SuggestionScreen extends StatelessWidget {
   const SuggestionScreen({super.key});
@@ -214,9 +215,15 @@ class _SuccessViewState extends State<_SuccessView>
                   index: index,
                   child: Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.md),
-                    child: _RefreshButton(
-                      onPressed: () =>
-                          context.read<HealthProvider>().getSuggestion(),
+                    child: Column(
+                      children: [
+                        _RefreshButton(
+                          onPressed: () =>
+                              context.read<HealthProvider>().getSuggestion(),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        const _PastSuggestionsButton(),
+                      ],
                     ),
                   ),
                 );
@@ -598,12 +605,29 @@ class _IdleViewState extends State<_IdleView>
                           icon: Icons.kitchen_rounded, label: 'Pantry'),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const _PastSuggestionsButton(),
                 ],
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PastSuggestionsButton extends StatelessWidget {
+  const _PastSuggestionsButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SuggestionHistoryScreen()),
+      ),
+      icon: const Icon(Icons.history_rounded, size: 18),
+      label: const Text('Past suggestions'),
     );
   }
 }
