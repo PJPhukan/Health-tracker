@@ -9,6 +9,7 @@ import 'providers/auth_controller.dart';
 import 'providers/health_provider.dart';
 import 'providers/profile_controller.dart';
 import 'screens/splash_screen.dart';
+import 'services/ad_service.dart';
 import 'services/firebase_bootstrap.dart';
 import 'theme/app_theme.dart';
 
@@ -34,6 +35,8 @@ class HealthTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileController()),
         // Owns the SQLite <-> Firestore sync; bound to the signed-in uid below.
         Provider(create: (_) => SyncService()),
+        // AdMob state for the free tier; stage 3 wires premium into it.
+        ChangeNotifierProvider(create: (_) => AdService()..init()),
         // HealthProvider owns the local logs; it also needs the current daily
         // targets (from ProfileController) and the active profile id (from
         // AuthController, to scope meal favorites) — pushed in on every change.

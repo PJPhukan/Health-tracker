@@ -85,5 +85,18 @@
 		<string>Stock Plate reads your step count so you don't have to enter it manually.</string>
 		<key>NSHealthUpdateUsageDescription</key>
 		<string>Stock Plate does not write to Health; this is only required by the system.</string>
+		<!-- AdMob (free tier). GADApplicationIdentifier is Google's SAMPLE id —
+		     replace with the real one before release (see SETUP.md). -->
+		<key>GADApplicationIdentifier</key>
+		<string>ca-app-pub-3940256099942544~1458002511</string>
+		<key>NSUserTrackingUsageDescription</key>
+		<string>This lets us show you more relevant ads. It does not affect your health data.</string>
+		<key>SKAdNetworkItems</key>
+		<array>
+			<dict>
+				<key>SKAdNetworkIdentifier</key>
+				<string>cstr6suwn9.skadnetwork</string>
+			</dict>
+		</array>
 	</dict>
 </plist>
