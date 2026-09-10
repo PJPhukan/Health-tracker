@@ -7,9 +7,22 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'health_tracker.db';
-  // v2: pantry_items.  v3: user_profiles (offline mirror of the Firestore
-  // profile).  v4: meal_favorites.
-  static const _dbVersion = 4;
+  // v2: pantry_items.  v3: user_profiles.  v4: meal_favorites.
+  // v5: sync columns (syncId / pendingSync / syncDeleted / syncUpdatedAt) on
+  //     every table that mirrors to Firestore under users/{uid}/.
+  static const _dbVersion = 5;
+
+  /// SQLite table -> Firestore collection under `users/{uid}/`.
+  static const syncedCollections = <String, String>{
+    'meal_entries': 'meals',
+    'workout_entries': 'workouts',
+    'sleep_entries': 'sleep',
+    'weight_entries': 'weight',
+    'steps_entries': 'steps',
+    'pantry_items': 'pantry_items',
+    'meal_favorites': 'meal_favorites',
+    'suggestion_history': 'suggestion_history',
+  };
 
   Database? _db;
 
@@ -40,7 +53,37 @@ class DatabaseHelper {
     if (oldVersion < 4) {
       await _createMealFavoritesTable(db);
     }
+    if (oldVersion < 5) {
+      for (final table in syncedCollections.keys) {
+        await _addSyncColumns(db, table);
+      }
+    }
   }
+
+  /// Adds the four sync-bookkeeping columns to an existing table (idempotent).
+  Future<void> _addSyncColumns(Database db, String table) async {
+    final cols = {
+      for (final row in await db.rawQuery('PRAGMA table_info($table)'))
+        row['name'] as String
+    };
+    Future<void> add(String name, String decl) async {
+      if (!cols.contains(name)) {
+        await db.execute('ALTER TABLE $table ADD COLUMN $name $decl');
+      }
+    }
+
+    await add('syncId', 'TEXT');
+    await add('pendingSync', 'INTEGER NOT NULL DEFAULT 0');
+    await add('syncDeleted', 'INTEGER NOT NULL DEFAULT 0');
+    await add('syncUpdatedAt', 'TEXT');
+  }
+
+  /// Column fragment appended to every synced table in [_onCreate].
+  static const _syncColumns = '''
+        syncId TEXT,
+        pendingSync INTEGER NOT NULL DEFAULT 0,
+        syncDeleted INTEGER NOT NULL DEFAULT 0,
+        syncUpdatedAt TEXT''';
 
   Future<void> _createPantryTable(Database db) async {
     await db.execute('''
@@ -49,7 +92,8 @@ class DatabaseHelper {
         itemName TEXT NOT NULL,
         quantity TEXT NOT NULL DEFAULT '',
         isLow INTEGER NOT NULL DEFAULT 0,
-        lastUpdated TEXT NOT NULL
+        lastUpdated TEXT NOT NULL,
+$_syncColumns
       )
     ''');
   }
@@ -75,7 +119,8 @@ class DatabaseHelper {
         description TEXT NOT NULL DEFAULT '',
         mealType TEXT NOT NULL DEFAULT 'snack',
         useCount INTEGER NOT NULL DEFAULT 0,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+$_syncColumns
       )
     ''');
     await db.execute(
@@ -90,7 +135,8 @@ class DatabaseHelper {
         date TEXT NOT NULL,
         mealType TEXT NOT NULL,
         foodDescription TEXT NOT NULL,
-        timestamp TEXT NOT NULL
+        timestamp TEXT NOT NULL,
+$_syncColumns
       )
     ''');
     await db.execute('''
@@ -100,7 +146,8 @@ class DatabaseHelper {
         exerciseType TEXT NOT NULL,
         durationMinutes INTEGER NOT NULL,
         notes TEXT NOT NULL DEFAULT '',
-        timestamp TEXT NOT NULL
+        timestamp TEXT NOT NULL,
+$_syncColumns
       )
     ''');
     await db.execute('''
@@ -109,21 +156,24 @@ class DatabaseHelper {
         date TEXT NOT NULL,
         sleepTime TEXT NOT NULL,
         wakeTime TEXT NOT NULL,
-        totalHours REAL NOT NULL
+        totalHours REAL NOT NULL,
+$_syncColumns
       )
     ''');
     await db.execute('''
       CREATE TABLE weight_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
-        weightKg REAL NOT NULL
+        weightKg REAL NOT NULL,
+$_syncColumns
       )
     ''');
     await db.execute('''
       CREATE TABLE steps_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
-        stepCount INTEGER NOT NULL
+        stepCount INTEGER NOT NULL,
+$_syncColumns
       )
     ''');
     await db.execute('''
@@ -132,7 +182,8 @@ class DatabaseHelper {
         date TEXT NOT NULL,
         prompt TEXT NOT NULL,
         response TEXT NOT NULL,
-        timestamp TEXT NOT NULL
+        timestamp TEXT NOT NULL,
+$_syncColumns
       )
     ''');
 

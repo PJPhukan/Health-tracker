@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart' show databaseFactory;
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
+import 'database/sync_service.dart';
 import 'providers/auth_controller.dart';
 import 'providers/health_provider.dart';
 import 'providers/profile_controller.dart';
@@ -31,15 +32,20 @@ class HealthTrackerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ProfileController()),
+        // Owns the SQLite <-> Firestore sync; bound to the signed-in uid below.
+        Provider(create: (_) => SyncService()),
         // HealthProvider owns the local logs; it also needs the current daily
         // targets (from ProfileController) and the active profile id (from
         // AuthController, to scope meal favorites) — pushed in on every change.
-        ChangeNotifierProxyProvider2<AuthController, ProfileController,
-            HealthProvider>(
-          create: (_) => HealthProvider(),
-          update: (_, auth, profile, health) => (health ?? HealthProvider())
-            ..syncGoals(profile.goals)
-            ..syncProfileId(auth.profileId),
+        ChangeNotifierProxyProvider3<AuthController, ProfileController,
+            SyncService, HealthProvider>(
+          create: (ctx) => HealthProvider(sync: ctx.read<SyncService>()),
+          update: (_, auth, profile, sync, health) {
+            sync.bind(auth.user?.uid);
+            return (health ?? HealthProvider(sync: sync))
+              ..syncGoals(profile.goals)
+              ..syncProfileId(auth.profileId);
+          },
         ),
       ],
       child: MaterialApp(

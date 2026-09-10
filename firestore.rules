@@ -1,12 +1,19 @@
 rules_version = '2';
 
-// Stock Plate — v2 stores only the user profile + goals in Firestore, at
-// users/{uid} (goals is a nested map). Everything else stays in local SQLite.
-// Each signed-in user may read and write only their own document.
+// Stock Plate.
+//  * v2: the user profile + goals live at users/{uid} (goals is a nested map).
+//  * v3: health logs sync into subcollections under users/{uid}/ —
+//        meals, workouts, sleep, weight, steps, pantry_items,
+//        meal_favorites, suggestion_history.
+// A signed-in user may read and write only their own document tree.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
   }
 }
