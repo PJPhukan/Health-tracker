@@ -1,5 +1,5 @@
 name: health_tracker
-description: A personal health tracking app with AI meal suggestions.
+description: Stock Plate — personal health tracking with AI meal suggestions.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -22,6 +22,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_native_splash: ^2.4.1
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -37,3 +38,18 @@ flutter_native_splash:
     color: "#F7F4EE"
     image: assets/branding/logo.png
   web: false
+
+# App launcher icon. Regenerate with: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: assets/branding/icon.png
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#F7F4EE"
+  adaptive_icon_background: "#F7F4EE"
+  adaptive_icon_foreground: assets/branding/icon_foreground.png
+  web:
+    generate: true
+    image_path: assets/branding/icon.png
+    background_color: "#F7F4EE"
+    theme_color: "#0F4C4C"

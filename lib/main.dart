@@ -25,7 +25,7 @@ class HealthTrackerApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => HealthProvider(),
       child: MaterialApp(
-        title: 'Health Tracker',
+        title: 'Stock Plate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         home: const SplashScreen(),

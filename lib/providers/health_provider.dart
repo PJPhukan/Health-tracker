@@ -236,7 +236,4 @@ class HealthProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-  Future<List<SuggestionEntry>> suggestionHistory() =>
-      _repo.getRecentSuggestions(days: 30);
 }

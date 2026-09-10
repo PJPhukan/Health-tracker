@@ -1,11 +1,11 @@
 {
-    "name": "health_tracker",
-    "short_name": "health_tracker",
+    "name": "Stock Plate",
+    "short_name": "Stock Plate",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F4EE",
+    "theme_color": "#0F4C4C",
+    "description": "Personal health tracking with AI meal suggestions.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

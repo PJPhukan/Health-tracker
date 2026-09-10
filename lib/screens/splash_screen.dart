@@ -140,7 +140,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Transform.translate(
                       offset: Offset(0, _nameSlide.value),
                       child: Text(
-                        'Health Tracker',
+                        'Stock Plate',
                         style: Theme.of(context)
                             .textTheme
                             .headlineSmall

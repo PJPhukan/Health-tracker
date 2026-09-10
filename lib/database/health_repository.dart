@@ -42,14 +42,6 @@ class HealthRepository {
     return rows.map(MealEntry.fromMap).toList();
   }
 
-  Future<List<MealEntry>> getRecentMeals({int days = 7}) async {
-    final rows = await (await _db).query('meal_entries',
-        where: 'date >= ?',
-        whereArgs: [_since(days)],
-        orderBy: 'date DESC, timestamp DESC');
-    return rows.map(MealEntry.fromMap).toList();
-  }
-
   // ---------------- Workouts ----------------
 
   Future<int> insertWorkout(WorkoutEntry e) async =>
@@ -71,14 +63,6 @@ class HealthRepository {
   Future<List<WorkoutEntry>> getWorkoutsForDate(String date) async {
     final rows = await (await _db).query('workout_entries',
         where: 'date = ?', whereArgs: [date], orderBy: 'timestamp DESC');
-    return rows.map(WorkoutEntry.fromMap).toList();
-  }
-
-  Future<List<WorkoutEntry>> getRecentWorkouts({int days = 7}) async {
-    final rows = await (await _db).query('workout_entries',
-        where: 'date >= ?',
-        whereArgs: [_since(days)],
-        orderBy: 'date DESC, timestamp DESC');
     return rows.map(WorkoutEntry.fromMap).toList();
   }
 
@@ -110,12 +94,6 @@ class HealthRepository {
   Future<int> deleteSleep(int id) async =>
       (await _db).delete('sleep_entries', where: 'id = ?', whereArgs: [id]);
 
-  Future<List<SleepEntry>> getRecentSleep({int days = 7}) async {
-    final rows = await (await _db).query('sleep_entries',
-        where: 'date >= ?', whereArgs: [_since(days)], orderBy: 'date DESC');
-    return rows.map(SleepEntry.fromMap).toList();
-  }
-
   // ---------------- Weight ----------------
 
   Future<int> insertWeight(WeightEntry e) async {
@@ -142,12 +120,6 @@ class HealthRepository {
 
   Future<int> deleteWeight(int id) async =>
       (await _db).delete('weight_entries', where: 'id = ?', whereArgs: [id]);
-
-  Future<List<WeightEntry>> getRecentWeight({int days = 7}) async {
-    final rows = await (await _db).query('weight_entries',
-        where: 'date >= ?', whereArgs: [_since(days)], orderBy: 'date DESC');
-    return rows.map(WeightEntry.fromMap).toList();
-  }
 
   // ---------------- Steps ----------------
 
@@ -176,12 +148,6 @@ class HealthRepository {
   Future<int> deleteSteps(int id) async =>
       (await _db).delete('steps_entries', where: 'id = ?', whereArgs: [id]);
 
-  Future<List<StepsEntry>> getRecentSteps({int days = 7}) async {
-    final rows = await (await _db).query('steps_entries',
-        where: 'date >= ?', whereArgs: [_since(days)], orderBy: 'date DESC');
-    return rows.map(StepsEntry.fromMap).toList();
-  }
-
   // ---------------- Pantry ----------------
 
   Future<int> insertPantryItem(PantryItem e) async =>
@@ -203,24 +169,11 @@ class HealthRepository {
     return rows.map(PantryItem.fromMap).toList();
   }
 
-  Future<List<PantryItem>> getLowStockItems() async {
-    final rows = await (await _db).query('pantry_items',
-        where: 'isLow = 1', orderBy: 'itemName COLLATE NOCASE ASC');
-    return rows.map(PantryItem.fromMap).toList();
-  }
-
   // ---------------- Suggestions ----------------
 
+  /// Write-only for v1: rows accumulate for a future "past suggestions" screen.
   Future<int> insertSuggestion(SuggestionEntry e) async =>
       (await _db).insert('suggestion_history', e.toMap());
-
-  Future<List<SuggestionEntry>> getRecentSuggestions({int days = 7}) async {
-    final rows = await (await _db).query('suggestion_history',
-        where: 'date >= ?',
-        whereArgs: [_since(days)],
-        orderBy: 'timestamp DESC');
-    return rows.map(SuggestionEntry.fromMap).toList();
-  }
 
   // ---------------- Aggregates ----------------
 
