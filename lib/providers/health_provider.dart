@@ -411,4 +411,43 @@ class HealthProvider extends ChangeNotifier {
 
   /// Past AI suggestions, newest first — for the suggestion history screen.
   Future<List<SuggestionEntry>> suggestionHistory() => _repo.getSuggestions();
+
+  // ---- progress dashboard ----
+
+  /// One shot of everything the Progress screen charts + streaks need.
+  Future<ProgressData> progressData() async {
+    return ProgressData(
+      weight: await _repo.getRecentWeight(days: 30),
+      steps: await _repo.getRecentSteps(days: 30),
+      sleep: await _repo.getRecentSleep(days: 7),
+      mealCountsByDay: await _repo.mealCountsByDay(days: 7),
+      mealLoggedDates: await _repo.mealLoggedDates(),
+      goals: _goals,
+    );
+  }
+}
+
+/// Immutable bundle for the Progress screen.
+class ProgressData {
+  ProgressData({
+    required this.weight,
+    required this.steps,
+    required this.sleep,
+    required this.mealCountsByDay,
+    required this.mealLoggedDates,
+    required this.goals,
+  });
+
+  final List<WeightEntry> weight;
+  final List<StepsEntry> steps;
+  final List<SleepEntry> sleep;
+  final Map<String, int> mealCountsByDay;
+  final List<String> mealLoggedDates;
+  final HealthGoals goals;
+
+  bool get isEmpty =>
+      weight.isEmpty &&
+      steps.isEmpty &&
+      sleep.isEmpty &&
+      mealCountsByDay.isEmpty;
 }

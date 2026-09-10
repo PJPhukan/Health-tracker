@@ -8,6 +8,7 @@ import 'history_screen.dart';
 import 'home_screen.dart';
 import 'log_entry_screen.dart';
 import 'pantry_screen.dart';
+import 'progress_screen.dart';
 
 /// Root scaffold: Home / Log / History behind a premium bottom nav.
 class MainShell extends StatefulWidget {
@@ -97,6 +98,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               label: 'Log',
             ),
             NavigationDestination(
+              icon: Icon(Icons.insights_outlined),
+              selectedIcon: Icon(Icons.insights_rounded),
+              label: 'Progress',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.kitchen_outlined),
               selectedIcon: Icon(Icons.kitchen_rounded),
               label: 'Pantry',
@@ -115,6 +121,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   late final _pages = <Widget>[
     const HomeScreen(),
     const LogEntryScreen(),
+    const ProgressScreen(),
     const PantryScreen(),
     const HistoryScreen(),
   ];

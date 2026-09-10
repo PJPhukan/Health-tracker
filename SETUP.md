@@ -96,7 +96,67 @@ Firebase console → **Authentication → Sign-in method**, enable:
 - The `health` plugin is Android/iOS only — on web the Steps form shows only
   the manual field. Firebase Auth/Firestore work on web once configured.
 
-## 6. Verify
+## 5b. Cloud sync (v3)
+
+All health logs now sync to Firestore under `users/{uid}/<collection>`
+(meals, workouts, sleep, weight, steps, pantry_items, meal_favorites,
+suggestion_history). SQLite stays the local cache.
+
+- **Redeploy the security rules** — v3 widened them to cover the
+  subcollections:
+  ```bash
+  firebase deploy --only firestore:rules --project stock-plate
+  ```
+- No indexes are required (each query is a single-collection `get()`).
+- The one-time "lift existing local data up" migration runs automatically on
+  first v3 launch per signed-in account (guarded by a SharedPreferences flag).
+
+## 6. AdMob (v3, free tier)
+
+Free users see a banner on Home + the Suggestion screen; Premium users see
+none. **Everything currently uses Google's SAMPLE / test ids** — the app will
+serve test ads as-is. Before release:
+
+1. Create an app at <https://apps.admob.com> for Android and one for iOS.
+2. Create a **Banner** ad unit for each.
+3. Replace the ids:
+   | Where | File | Sample value to replace |
+   |---|---|---|
+   | Android app id | `android/app/src/main/AndroidManifest.xml` (`com.google.android.gms.ads.APPLICATION_ID`) | `ca-app-pub-3940256099942544~3347511713` |
+   | iOS app id | `ios/Runner/Info.plist` (`GADApplicationIdentifier`) | `ca-app-pub-3940256099942544~1458002511` |
+   | Banner unit id | `lib/services/ad_service.dart` (`bannerUnitId`) | `ca-app-pub-3940256099942544/6300978111` |
+4. **iOS ATT**: `NSUserTrackingUsageDescription` is already in `Info.plist`.
+   For a real release, call the ATT prompt (`app_tracking_transparency`
+   package) before requesting ads on iOS 14+, and fill out the AdMob
+   privacy/ATT settings + the App Store privacy questionnaire. The
+   `SKAdNetworkItems` list in `Info.plist` currently has only Google's id —
+   add the full list AdMob publishes.
+5. Google Play: complete the Data safety form (ads collect device
+   identifiers).
+
+## 7. RevenueCat subscription (v3)
+
+`SubscriptionService` ships with **placeholder API keys**
+(`appl_placeholder`, `goog_placeholder` in `lib/services/subscription_service.dart`).
+Until they're real, `available` stays false: no purchases, ads keep showing,
+and the paywall shows an "unavailable" note. To enable Premium:
+
+1. Create a project at <https://app.revenuecat.com>.
+2. Add the **Apple App Store** and **Google Play Store** apps; paste in the
+   App Store Connect shared secret / Play service-account JSON.
+3. Create a **monthly** subscription product in App Store Connect and Play
+   Console, then add it to RevenueCat.
+4. Create an entitlement with the exact identifier **`premium`** and attach
+   the product to it.
+5. Create an **Offering** (the code reads `offerings.current.monthly`) and
+   make it current.
+6. Replace `_iosApiKey` / `_androidApiKey` in
+   `lib/services/subscription_service.dart` with the platform API keys from
+   RevenueCat → Project settings → API keys (`appl_…` / `goog_…`).
+7. The price shown in-app comes straight from the store product — no code
+   change needed.
+
+## 8. Verify
 
 ```bash
 flutter analyze                 # clean
@@ -105,8 +165,21 @@ flutter build apk --debug --dart-define=GEMINI_API_KEY=<key>
 flutter run --dart-define=GEMINI_API_KEY=<key>
 ```
 
-## Still deferred to v3
+## Placeholder values to replace before going live
 
-Health logs (meals / workouts / sleep / steps / pantry / suggestion history)
-remain in local SQLite. Only the user profile + goals sync to Firestore.
-Full cloud sync of the logs is a v3 decision.
+| Value | Location | Current (placeholder / test) |
+|---|---|---|
+| Gemini API key | `--dart-define=GEMINI_API_KEY=…` at build/run | none baked in |
+| AdMob Android app id | `android/app/src/main/AndroidManifest.xml` | `ca-app-pub-3940256099942544~3347511713` |
+| AdMob iOS app id | `ios/Runner/Info.plist` → `GADApplicationIdentifier` | `ca-app-pub-3940256099942544~1458002511` |
+| AdMob banner unit id | `lib/services/ad_service.dart` → `bannerUnitId` | `ca-app-pub-3940256099942544/6300978111` |
+| RevenueCat iOS key | `lib/services/subscription_service.dart` → `_iosApiKey` | `appl_placeholder` |
+| RevenueCat Android key | `lib/services/subscription_service.dart` → `_androidApiKey` | `goog_placeholder` |
+| RevenueCat entitlement id | `lib/services/subscription_service.dart` → `entitlementId` | `premium` (create this in RevenueCat) |
+| `SKAdNetworkItems` | `ios/Runner/Info.plist` | only Google's id — add AdMob's full list |
+| Firebase config | `lib/firebase_options.dart` + native files | real `stock-plate` values ✓ (already set) |
+
+Also still pending from v1/v2:
+- iOS **HealthKit** capability in Xcode (Runner target → Signing & Capabilities).
+- AdMob/RevenueCat need real developer + store accounts before either works
+  beyond test mode.
