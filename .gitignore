@@ -66,3 +66,6 @@ pubspec_overrides.yaml
 # Note: the flutter_native_splash output (android/.../res/drawable*/*splash*.png,
 # values-v31 styles, ios LaunchImage) IS committed on purpose — do not ignore it;
 # regenerate with `dart run flutter_native_splash:create`.
+
+# Firebase / FlutterFire
+android/.kotlin/
