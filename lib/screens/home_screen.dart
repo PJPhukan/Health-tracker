@@ -6,6 +6,7 @@ import '../models/user_profile.dart';
 import '../providers/health_provider.dart';
 import '../providers/profile_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
 import '../widgets/summary_widgets.dart';
 import 'settings_screen.dart';
@@ -106,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
+          const BannerAdSlot(),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
 
 class SuggestionScreen extends StatelessWidget {
@@ -12,7 +13,12 @@ class SuggestionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<HealthProvider>();
     return Scaffold(
-      body: _body(context, provider),
+      body: Column(
+        children: [
+          Expanded(child: _body(context, provider)),
+          const BannerAdSlot(),
+        ],
+      ),
     );
   }
 
