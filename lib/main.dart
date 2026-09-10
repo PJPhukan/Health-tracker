@@ -11,6 +11,7 @@ import 'providers/profile_controller.dart';
 import 'screens/splash_screen.dart';
 import 'services/ad_service.dart';
 import 'services/firebase_bootstrap.dart';
+import 'services/subscription_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -35,8 +36,18 @@ class HealthTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileController()),
         // Owns the SQLite <-> Firestore sync; bound to the signed-in uid below.
         Provider(create: (_) => SyncService()),
-        // AdMob state for the free tier; stage 3 wires premium into it.
-        ChangeNotifierProvider(create: (_) => AdService()..init()),
+        // RevenueCat — identifies to the signed-in account so entitlements
+        // follow the user. Placeholder keys => `available` stays false.
+        ChangeNotifierProxyProvider<AuthController, SubscriptionService>(
+          create: (_) => SubscriptionService()..init(),
+          update: (_, auth, sub) => sub!..identify(auth.user?.uid),
+        ),
+        // AdMob state for the free tier. Premium flips it off with no restart.
+        ChangeNotifierProxyProvider<SubscriptionService, AdService>(
+          create: (_) => AdService()..init(),
+          update: (_, sub, ad) => (ad ?? (AdService()..init()))
+            ..setPremium(sub.isPremium),
+        ),
         // HealthProvider owns the local logs; it also needs the current daily
         // targets (from ProfileController) and the active profile id (from
         // AuthController, to scope meal favorites) — pushed in on every change.
