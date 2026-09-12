@@ -99,4 +99,29 @@ void main() {
     expect(summary.workouts, isEmpty);
     expect(await repo.getRecentDates(days: 7), isNot(contains(today())));
   });
+
+  group('addPantryItemsBatch (pantry onboarding checklist)', () {
+    test('inserts every distinct name in one go', () async {
+      final added = await repo
+          .addPantryItemsBatch(['Rice', 'Onion', 'Toor dal', '  ', '']);
+      expect(added, 3); // blanks are dropped
+      final items = await repo.getAllPantryItems();
+      expect(items.map((i) => i.itemName), containsAll(['Rice', 'Onion', 'Toor dal']));
+    });
+
+    test('skips names already in the pantry, case-insensitively', () async {
+      await repo.addPantryItemsBatch(['Rice']);
+      final added = await repo.addPantryItemsBatch(['rice', 'Onion']);
+      expect(added, 1); // only Onion is new
+      final items = await repo.getAllPantryItems();
+      expect(items, hasLength(2));
+    });
+
+    test('a no-op batch (all duplicates) returns 0 and adds nothing', () async {
+      await repo.addPantryItemsBatch(['Rice']);
+      final added = await repo.addPantryItemsBatch(['Rice']);
+      expect(added, 0);
+      expect(await repo.getAllPantryItems(), hasLength(1));
+    });
+  });
 }

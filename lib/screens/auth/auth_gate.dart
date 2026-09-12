@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_controller.dart';
 import '../../providers/profile_controller.dart';
 import '../../theme/app_theme.dart';
-import '../main_shell.dart';
 import '../onboarding/onboarding_flow.dart';
+import '../onboarding/pantry_onboarding_gate.dart';
 import 'login_screen.dart';
 
 /// Decides what the user sees once the splash finishes.
@@ -14,7 +14,8 @@ import 'login_screen.dart';
 /// * `signedOut`  → Login  (only reachable when Firebase is configured)
 /// * `localOnly` / `signedIn` → bind the profile, then:
 ///     * onboarding not done → OnboardingFlow
-///     * otherwise           → the app shell
+///     * otherwise           → PantryOnboardingGate (first-run pantry
+///       checklist, then the app shell)
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -57,7 +58,7 @@ class _AuthGateState extends State<AuthGate> {
         final profile = context.watch<ProfileController>();
         if (profile.state == ProfileState.loading) return const _Waiting();
         if (profile.needsOnboarding) return const OnboardingFlow();
-        return const MainShell();
+        return const PantryOnboardingGate();
     }
   }
 }

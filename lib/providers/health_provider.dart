@@ -292,6 +292,14 @@ class HealthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Batch-adds a checklist worth of items at once — pantry onboarding.
+  /// Returns how many were actually added (duplicates are skipped).
+  Future<int> addPantryItemsBatch(List<String> names) async {
+    final added = await _repo.addPantryItemsBatch(names);
+    await loadPantry();
+    return added;
+  }
+
   Future<void> addPantryItem(String name, String quantity) async {
     await _repo.insertPantryItem(PantryItem(
       itemName: name.trim(),
