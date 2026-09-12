@@ -35,6 +35,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       final health = context.read<HealthProvider>();
       await health.loadToday();
       await health.loadFavorites();
+      await health.loadTemplates();
       // Pull the cloud copy down + flush pending local writes (no-op offline
       // or in local-only mode), then refresh.
       await health.syncNow();

@@ -10,7 +10,8 @@ class DatabaseHelper {
   // v2: pantry_items.  v3: user_profiles.  v4: meal_favorites.
   // v5: sync columns (syncId / pendingSync / syncDeleted / syncUpdatedAt) on
   //     every table that mirrors to Firestore under users/{uid}/.
-  static const _dbVersion = 5;
+  // v6: meal_templates (recurring meals — see MealTemplate).
+  static const _dbVersion = 6;
 
   /// SQLite table -> Firestore collection under `users/{uid}/`.
   static const syncedCollections = <String, String>{
@@ -22,6 +23,7 @@ class DatabaseHelper {
     'pantry_items': 'pantry_items',
     'meal_favorites': 'meal_favorites',
     'suggestion_history': 'suggestion_history',
+    'meal_templates': 'meal_templates',
   };
 
   Database? _db;
@@ -58,10 +60,23 @@ class DatabaseHelper {
         await _addSyncColumns(db, table);
       }
     }
+    if (oldVersion < 6) {
+      await _createMealTemplatesTable(db);
+    }
   }
 
-  /// Adds the four sync-bookkeeping columns to an existing table (idempotent).
+  Future<bool> _tableExists(Database db, String table) async {
+    final rows = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+        [table]);
+    return rows.isNotEmpty;
+  }
+
+  /// Adds the four sync-bookkeeping columns to an existing table (idempotent,
+  /// and a no-op for a table that doesn't exist yet — it'll be created fresh
+  /// with these columns already inline by its own `_createXTable`/`_onCreate`).
   Future<void> _addSyncColumns(Database db, String table) async {
+    if (!await _tableExists(db, table)) return;
     final cols = {
       for (final row in await db.rawQuery('PRAGMA table_info($table)'))
         row['name'] as String
@@ -126,6 +141,24 @@ $_syncColumns
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_meal_favorites_profile '
         'ON meal_favorites(profileId)');
+  }
+
+  Future<void> _createMealTemplatesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS meal_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profileId TEXT NOT NULL,
+        dayType TEXT NOT NULL,
+        mealSlot TEXT NOT NULL,
+        foodDescription TEXT NOT NULL,
+        items TEXT NOT NULL DEFAULT '',
+        createdAt TEXT NOT NULL,
+$_syncColumns
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_meal_templates_profile '
+        'ON meal_templates(profileId)');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -201,5 +234,6 @@ $_syncColumns
     await _createPantryTable(db);
     await _createUserProfileTable(db);
     await _createMealFavoritesTable(db);
+    await _createMealTemplatesTable(db);
   }
 }

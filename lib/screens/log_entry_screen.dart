@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/voice_mic_button.dart';
 import 'favorites_screen.dart';
+import 'meal_routine_screen.dart';
 
 class LogEntryScreen extends StatefulWidget {
   const LogEntryScreen({
@@ -46,6 +47,33 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       barrierColor: Colors.black12,
       builder: (_) => const _SavedFlash(),
     );
+    if (!mounted) return;
+    final suggestion = context.read<HealthProvider>().pendingTemplateSuggestion;
+    if (suggestion == null) return;
+    context.read<HealthProvider>().clearTemplateSuggestion();
+    final wantsToSave = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.repeat_rounded, color: AppColors.teal, size: 32),
+        title: const Text('Save as routine?'),
+        content: Text(suggestion.message),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not now')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Add it')),
+        ],
+      ),
+    );
+    if (wantsToSave == true && mounted) {
+      await showAddTemplateSheet(
+        context,
+        initialSlot: suggestion.mealType,
+        initialDescription: suggestion.description,
+      );
+    }
   }
 
   @override

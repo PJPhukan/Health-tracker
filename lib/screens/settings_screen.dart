@@ -9,6 +9,7 @@ import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'meal_routine_screen.dart';
 import 'onboarding/pantry_onboarding_screen.dart';
 import 'onboarding/review_goals_screen.dart';
 import 'profile_edit_screen.dart';
@@ -120,6 +121,17 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.checklist_rounded, size: 18),
                   label: const Text('Rebuild pantry checklist'),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const MetaLabel('Routine'),
+                const SizedBox(height: AppSpacing.xs),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const MealRoutineScreen()),
+                  ),
+                  icon: const Icon(Icons.repeat_rounded, size: 18),
+                  label: const Text('My meal routine'),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 if (auth.stage == AuthStage.signedIn)

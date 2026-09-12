@@ -300,6 +300,62 @@ class MealFavorite {
       description.trim().isEmpty ? name : '$name — ${description.trim()}';
 }
 
+/// Which days a [MealTemplate] applies to.
+enum DayType { weekday, weekend, everyday }
+
+DayType dayTypeFromString(String s) =>
+    DayType.values.firstWhere((e) => e.name == s, orElse: () => DayType.everyday);
+
+/// A recurring meal — "Weekday breakfast: Rice + dal + egg". Matched against
+/// today by [TemplateMatcher] to proactively suggest a one-tap log.
+class MealTemplate {
+  final int? id;
+  final String? syncId;
+  final String profileId;
+  final DayType dayType;
+  final MealType mealSlot;
+  final String foodDescription;
+  final List<String> items;
+  final String createdAt;
+
+  MealTemplate({
+    this.id,
+    this.syncId,
+    required this.profileId,
+    required this.dayType,
+    required this.mealSlot,
+    required this.foodDescription,
+    this.items = const [],
+    required this.createdAt,
+  });
+
+  Map<String, Object?> toMap() => {
+        if (id != null) 'id': id,
+        if (syncId != null) 'syncId': syncId,
+        'profileId': profileId,
+        'dayType': dayType.name,
+        'mealSlot': mealSlot.name,
+        'foodDescription': foodDescription,
+        'items': items.join('|'),
+        'createdAt': createdAt,
+      };
+
+  factory MealTemplate.fromMap(Map<String, Object?> m) => MealTemplate(
+        id: m['id'] as int?,
+        syncId: m['syncId'] as String?,
+        profileId: (m['profileId'] as String?) ?? 'local',
+        dayType: dayTypeFromString((m['dayType'] as String?) ?? 'everyday'),
+        mealSlot: mealTypeFromString((m['mealSlot'] as String?) ?? 'snack'),
+        foodDescription: m['foodDescription'] as String,
+        items: ((m['items'] as String?) ?? '')
+            .split('|')
+            .where((s) => s.isNotEmpty)
+            .toList(),
+        createdAt:
+            (m['createdAt'] as String?) ?? DateTime.now().toIso8601String(),
+      );
+}
+
 class SuggestionEntry {
   final int? id;
   final String? syncId;

@@ -124,4 +124,51 @@ void main() {
       expect(await repo.getAllPantryItems(), hasLength(1));
     });
   });
+
+  group('meal templates', () {
+    setUp(() async {
+      final db = await helper.database;
+      await db.delete('meal_templates');
+    });
+
+    test('insert + read round-trips every field, including items', () async {
+      await repo.insertMealTemplate(MealTemplate(
+        profileId: 'local',
+        dayType: DayType.weekday,
+        mealSlot: MealType.breakfast,
+        foodDescription: 'Rice + dal + egg',
+        items: const ['rice', 'dal', 'egg'],
+        createdAt: DateTime.now().toIso8601String(),
+      ));
+      final templates = await repo.getMealTemplates('local');
+      expect(templates, hasLength(1));
+      expect(templates.first.dayType, DayType.weekday);
+      expect(templates.first.mealSlot, MealType.breakfast);
+      expect(templates.first.items, ['rice', 'dal', 'egg']);
+    });
+
+    test('templates are scoped per profile id', () async {
+      await repo.insertMealTemplate(MealTemplate(
+        profileId: 'user-a',
+        dayType: DayType.everyday,
+        mealSlot: MealType.lunch,
+        foodDescription: 'Sandwich',
+        createdAt: DateTime.now().toIso8601String(),
+      ));
+      expect(await repo.getMealTemplates('user-b'), isEmpty);
+      expect(await repo.getMealTemplates('user-a'), hasLength(1));
+    });
+
+    test('delete (local-only) removes it from subsequent reads', () async {
+      final id = await repo.insertMealTemplate(MealTemplate(
+        profileId: 'local',
+        dayType: DayType.weekend,
+        mealSlot: MealType.dinner,
+        foodDescription: 'Biryani',
+        createdAt: DateTime.now().toIso8601String(),
+      ));
+      await repo.deleteMealTemplate(id);
+      expect(await repo.getMealTemplates('local'), isEmpty);
+    });
+  });
 }
