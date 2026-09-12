@@ -163,6 +163,14 @@ class _PantryOnboardingScreenState extends State<PantryOnboardingScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   FilledButton(
                     onPressed: _saving ? null : _finish,
+                    // The app's FilledButton theme defaults to
+                    // Size.fromHeight(56) (infinite width) for the common
+                    // full-width case — that crashes layout as a bare Row
+                    // child, so it needs an explicit bounded size here.
+                    style: FilledButton.styleFrom(
+                        minimumSize: const Size(96, 48),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg)),
                     child: _saving
                         ? const SizedBox(
                             width: 18,
