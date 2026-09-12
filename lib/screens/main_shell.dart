@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
+import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import 'history_screen.dart';
@@ -9,6 +12,7 @@ import 'home_screen.dart';
 import 'log_entry_screen.dart';
 import 'pantry_screen.dart';
 import 'progress_screen.dart';
+import 'suggestion_screen.dart';
 
 /// Root scaffold: Home / Log / History behind a premium bottom nav.
 class MainShell extends StatefulWidget {
@@ -20,11 +24,13 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _index = 0;
+  Timer? _midnightTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    NotificationService.instance.deepLink.addListener(_handleDeepLink);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final health = context.read<HealthProvider>();
       await health.loadToday();
@@ -36,13 +42,53 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // permission is already granted. Never prompts here.
       await health.initHealthSync();
       await health.loadToday();
+      // Requesting is a no-op once the user has already granted or denied —
+      // safe to call on every launch rather than tracking a "did we ask" flag.
+      await NotificationService.instance.requestPermission();
+      await health.refreshReminders();
+      _armMidnightTimer();
+      // A cold-start tap resolves before this widget exists; pick it up now.
+      _handleDeepLink();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    NotificationService.instance.deepLink.removeListener(_handleDeepLink);
+    _midnightTimer?.cancel();
     super.dispose();
+  }
+
+  /// Re-runs [HealthProvider.refreshReminders] once at the next local
+  /// midnight (while the app happens to be open), then rearms for the day
+  /// after — covers the "reschedule at midnight" half of the requirement
+  /// without a background task scheduler.
+  void _armMidnightTimer() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    _midnightTimer = Timer(nextMidnight.difference(now), () async {
+      if (!mounted) return;
+      await context.read<HealthProvider>().refreshReminders();
+      _armMidnightTimer();
+    });
+  }
+
+  void _handleDeepLink() {
+    final link = NotificationService.instance.deepLink.value;
+    if (link == null || !mounted) return;
+    NotificationService.instance.deepLink.value = null; // consume once
+    switch (link) {
+      case NotificationDeepLink.mealLog:
+        setState(() => _index = 1);
+      case NotificationDeepLink.progress:
+        setState(() => _index = 2);
+      case NotificationDeepLink.suggestion:
+        context.read<HealthProvider>().getSuggestion();
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SuggestionScreen()));
+    }
   }
 
   @override
@@ -51,7 +97,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       final health = context.read<HealthProvider>();
       health.syncNow();
       health.refreshStepsFromHealth().then((_) => health.loadToday());
+      health.refreshReminders();
       context.read<SubscriptionService>().refresh();
+      _armMidnightTimer();
     }
   }
 
