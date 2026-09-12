@@ -156,7 +156,46 @@ and the paywall shows an "unavailable" note. To enable Premium:
 7. The price shown in-app comes straight from the store product — no code
    change needed.
 
-## 8. Verify
+## 9. Voice meal logging (v4)
+
+Voice logging (`lib/widgets/voice_mic_button.dart`, `speech_to_text`) needs the
+microphone — and, on iOS, on-device speech recognition — permission.
+
+- **Android**: `RECORD_AUDIO` is declared in `AndroidManifest.xml`. The plugin
+  requests it at runtime on first tap; our own rationale dialog ("Stock Plate
+  uses your microphone to let you log meals by voice") shows once beforehand.
+- **iOS**: `Info.plist` carries both `NSMicrophoneUsageDescription` *and*
+  `NSSpeechRecognitionUsageDescription` — speech_to_text needs both on iOS, or
+  the OS silently denies the request without ever showing a system prompt.
+  Test on a real device; the Simulator's speech recognizer is unreliable.
+- A denied/unavailable recognizer just hides the mic button — manual typing
+  always still works, nothing to configure for that fallback.
+
+## 10. Daily reminders (v4)
+
+`lib/services/notification_service.dart` (`flutter_local_notifications`).
+
+- **Android 13+ (API 33+)**: `POST_NOTIFICATIONS` is a runtime permission,
+  requested on first app launch (`MainShell` calls
+  `NotificationService.requestPermission()` — safe to call repeatedly, it's a
+  no-op once the user has answered). Below API 33 no runtime prompt is needed.
+- **Android**: core library desugaring is enabled in
+  `android/app/build.gradle.kts` (`isCoreLibraryDesugaringEnabled = true` +
+  the `desugar_jdk_libs` dependency) — required by this plugin; the debug
+  build fails at `checkDebugAarMetadata` without it.
+- **iOS**: `DarwinInitializationSettings` requests alert/badge/sound
+  permission the same way — no extra Info.plist keys needed beyond what the
+  plugin's own setup already covers.
+- Reminders use `AndroidScheduleMode.inexactAllowWhileIdle`, so **no**
+  `SCHEDULE_EXACT_ALARM` permission is needed — times can drift by a few
+  minutes, which is fine for a daily nudge.
+- Known scope limit: rescheduling happens on app start, on resume, and once
+  at local midnight *while the app is open*. Going several days without
+  opening the app means the last-scheduled slate is what fires — true
+  indefinite background rescheduling would need `workmanager` or a native
+  `AlarmManager` repeat, which is out of scope for v4.
+
+## 11. Verify
 
 ```bash
 flutter analyze                 # clean
@@ -179,7 +218,14 @@ flutter run --dart-define=GEMINI_API_KEY=<key>
 | `SKAdNetworkItems` | `ios/Runner/Info.plist` | only Google's id — add AdMob's full list |
 | Firebase config | `lib/firebase_options.dart` + native files | real `stock-plate` values ✓ (already set) |
 
+No new placeholder *values* came out of v4 — voice logging and reminders use
+on-device APIs only (no API keys), and the pantry/template features are pure
+local+Firestore data.
+
 Also still pending from v1/v2:
 - iOS **HealthKit** capability in Xcode (Runner target → Signing & Capabilities).
 - AdMob/RevenueCat need real developer + store accounts before either works
   beyond test mode.
+- **v4 addition**: Firestore rules already cover `meal_templates` (it's just
+  another subcollection under the existing `users/{uid}/{document=**}`
+  match) — no rule redeploy needed for this release.
