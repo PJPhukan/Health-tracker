@@ -13,6 +13,7 @@ import 'services/ad_service.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/notification_service.dart';
 import 'services/subscription_service.dart';
+import 'services/toast_center.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -70,6 +71,10 @@ class HealthTrackerApp extends StatelessWidget {
         title: 'Stock Plate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        // Lets background work (pantry auto-deduct) show a SnackBar — and
+        // navigate from its action — no matter which screen is on top.
+        scaffoldMessengerKey: ToastCenter.scaffoldMessengerKey,
+        navigatorKey: ToastCenter.navigatorKey,
         home: const SplashScreen(),
       ),
     );

@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'restock_screen.dart';
 
 class PantryScreen extends StatefulWidget {
   const PantryScreen({super.key});
@@ -103,6 +104,7 @@ class _PantryScreenState extends State<PantryScreen>
   Widget build(BuildContext context) {
     final provider = context.watch<HealthProvider>();
     final items = provider.pantry;
+    final lowCount = items.where((i) => i.isLow).length;
 
     return Scaffold(
       body: Column(
@@ -112,10 +114,7 @@ class _PantryScreenState extends State<PantryScreen>
             subtitle: items.isEmpty
                 ? 'Keep ingredients ready for your next meal'
                 : '${items.length} item${items.length == 1 ? '' : 's'} in your kitchen',
-            trailing: const AnimatedSparkleIcon(
-              icon: Icons.kitchen_rounded,
-              size: 24,
-            ),
+            trailing: _RestockAction(lowCount: lowCount),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -170,6 +169,53 @@ class _PantryScreenState extends State<PantryScreen>
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Top-right pantry action: badges the low-stock count, opens [RestockScreen].
+class _RestockAction extends StatelessWidget {
+  const _RestockAction({required this.lowCount});
+  final int lowCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Restock',
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const RestockScreen())),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Icon(Icons.shopping_cart_rounded,
+                  color: Colors.white, size: 20),
+              if (lowCount > 0)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

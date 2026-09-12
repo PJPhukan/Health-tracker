@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../database/health_repository.dart';
@@ -6,7 +8,9 @@ import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../services/gemini_service.dart';
 import '../services/health_steps_service.dart';
+import '../screens/pantry_screen.dart';
 import '../services/notification_service.dart';
+import '../services/toast_center.dart';
 
 enum SuggestionStatus { idle, loading, success, error }
 
@@ -168,6 +172,38 @@ class HealthProvider extends ChangeNotifier {
       timestamp: now.toIso8601String(),
     ));
     await loadToday();
+    // Never blocks the save above: a slow or failed Gemini call just means no
+    // pantry update happens this time.
+    unawaited(_autoDeductPantry(desc));
+  }
+
+  /// Asks Gemini which pantry items this meal likely used up and marks them
+  /// low. Best-effort and silent on any failure — logging the meal must never
+  /// depend on this succeeding.
+  Future<void> _autoDeductPantry(String foodDescription) async {
+    try {
+      final pantry = await _repo.getAllPantryItems();
+      if (pantry.isEmpty) return;
+      final names = await _ai.suggestPantryDeductions(foodDescription, pantry);
+      if (names.isEmpty) return;
+
+      final toMark = pantry.where((item) =>
+          !item.isLow &&
+          names.any((n) => n.toLowerCase() == item.itemName.toLowerCase()));
+      var count = 0;
+      for (final item in toMark) {
+        await _repo.updatePantryItem(item.copyWith(isLow: true));
+        count++;
+      }
+      if (count == 0) return;
+      await loadPantry();
+      ToastCenter.showWithView(
+        'Pantry updated — $count item${count == 1 ? '' : 's'} marked low',
+        (_) => const PantryScreen(),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('auto-deduct failed: $e');
+    }
   }
 
   Future<void> deleteMeal(int id) async {
@@ -392,6 +428,7 @@ class HealthProvider extends ChangeNotifier {
     if (favorite.id != null) await _repo.bumpFavoriteUse(favorite.id!);
     await loadFavorites();
     await loadToday();
+    unawaited(_autoDeductPantry(favorite.loggedDescription));
   }
 
   /// True if a meal with this description is already a favorite (drives the

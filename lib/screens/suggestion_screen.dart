@@ -5,6 +5,7 @@ import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
+import 'restock_screen.dart';
 import 'suggestion_history_screen.dart';
 
 class SuggestionScreen extends StatelessWidget {
@@ -301,6 +302,21 @@ class _SuggestionCard extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
+          if (section.buyItems != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) =>
+                      RestockScreen(suggestedNames: section.buyItems),
+                )),
+                icon: const Icon(Icons.shopping_cart_checkout_rounded,
+                    size: 18),
+                label: const Text('Bought these? Restock'),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -672,11 +688,16 @@ class _SuggestionSection {
     required this.body,
     this.icon,
     this.accentColor,
+    this.buyItems,
   });
   final String? heading;
   final String body;
   final IconData? icon;
   final Color? accentColor;
+
+  /// Raw item names for the "Buy today" section — lets its card offer a
+  /// "Restock" shortcut once those items are actually bought.
+  final List<String>? buyItems;
 }
 
 IconData _iconForHeading(String heading) {
@@ -788,6 +809,7 @@ List<_SuggestionSection> _parseSuggestion(String raw) {
           body: items.map((e) => '\ud83d\uded2 $e').join('\n'),
           icon: Icons.shopping_cart_rounded,
           accentColor: AppColors.behind,
+          buyItems: items,
         ));
       }
       continue;
