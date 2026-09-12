@@ -85,6 +85,11 @@
 		<string>Stock Plate reads your step count so you don't have to enter it manually.</string>
 		<key>NSHealthUpdateUsageDescription</key>
 		<string>Stock Plate does not write to Health; this is only required by the system.</string>
+		<!-- Voice meal logging (see lib/widgets/voice_mic_button.dart) -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Stock Plate uses your microphone to let you log meals by voice.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Stock Plate turns your spoken meal description into a logged entry.</string>
 		<!-- AdMob (free tier). GADApplicationIdentifier is Google's SAMPLE id —
 		     replace with the real one before release (see SETUP.md). -->
 		<key>GADApplicationIdentifier</key>

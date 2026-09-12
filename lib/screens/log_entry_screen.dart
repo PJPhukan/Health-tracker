@@ -6,17 +6,29 @@ import '../providers/health_provider.dart';
 import '../services/health_steps_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/voice_mic_button.dart';
 import 'favorites_screen.dart';
 
 class LogEntryScreen extends StatefulWidget {
-  const LogEntryScreen({super.key});
+  const LogEntryScreen({
+    super.key,
+    this.initialTab = 0,
+    this.autoStartVoice = false,
+  });
+
+  /// Which pill is selected on open — see [_LogEntryScreenState._labels].
+  final int initialTab;
+
+  /// Starts the meal tab's mic listening automatically once the screen is up
+  /// — used by the "log it" / "something else" routine-suggestion banner.
+  final bool autoStartVoice;
 
   @override
   State<LogEntryScreen> createState() => _LogEntryScreenState();
 }
 
 class _LogEntryScreenState extends State<LogEntryScreen> {
-  int _tab = 0;
+  late int _tab = widget.initialTab;
 
   static const _labels = ['Meal', 'Workout', 'Sleep', 'Weight', 'Steps'];
   static const _icons = [
@@ -53,7 +65,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
             child: IndexedStack(
               index: _tab,
               children: [
-                _MealForm(onSaved: _afterSave),
+                _MealForm(
+                    onSaved: _afterSave, autoStartVoice: widget.autoStartVoice),
                 _WorkoutForm(onSaved: _afterSave),
                 _SleepForm(onSaved: _afterSave),
                 _WeightForm(onSaved: _afterSave),
@@ -479,8 +492,9 @@ class _SavedFlashState extends State<_SavedFlash> {
 // ---------------------------------------------------------------------------
 
 class _MealForm extends StatefulWidget {
-  const _MealForm({required this.onSaved});
+  const _MealForm({required this.onSaved, this.autoStartVoice = false});
   final Future<void> Function() onSaved;
+  final bool autoStartVoice;
   @override
   State<_MealForm> createState() => _MealFormState();
 }
@@ -488,17 +502,42 @@ class _MealForm extends StatefulWidget {
 class _MealFormState extends State<_MealForm> {
   MealType _type = MealType.breakfast;
   final _desc = TextEditingController();
+  final _micKey = GlobalKey<VoiceMicButtonState>();
+  bool _parsingVoice = false;
 
   @override
   void initState() {
     super.initState();
     _desc.addListener(() => setState(() {}));
+    if (widget.autoStartVoice) {
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _micKey.currentState?.start());
+    }
   }
 
   @override
   void dispose() {
     _desc.dispose();
     super.dispose();
+  }
+
+  /// The mic hands back a raw transcript; ask Gemini to structure it, then
+  /// pre-fill the form. A parse failure just drops the raw words into the
+  /// text field so the user can clean it up manually — one tap either way.
+  Future<void> _onTranscript(String transcript) async {
+    if (transcript.trim().isEmpty) return;
+    setState(() => _parsingVoice = true);
+    final parsed = await context.read<HealthProvider>().parseVoiceMeal(transcript);
+    if (!mounted) return;
+    setState(() {
+      _parsingVoice = false;
+      if (parsed != null) {
+        _type = parsed.mealType;
+        _desc.text = parsed.foodDescription;
+      } else {
+        _desc.text = transcript;
+      }
+    });
   }
 
   Future<void> _saveAsFavorite() async {
@@ -524,6 +563,25 @@ class _MealFormState extends State<_MealForm> {
         await widget.onSaved();
       },
       fields: [
+        Center(
+          child: _parsingVoice
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.4, color: AppColors.teal)),
+                      SizedBox(height: AppSpacing.xs),
+                      Text('Making sense of that…'),
+                    ],
+                  ),
+                )
+              : VoiceMicButton(key: _micKey, onTranscript: _onTranscript),
+        ),
         if (favorites.isNotEmpty)
           _MealFavoritesRow(
             favorites: favorites,
