@@ -11,6 +11,7 @@ import 'providers/profile_controller.dart';
 import 'screens/splash_screen.dart';
 import 'services/ad_service.dart';
 import 'services/firebase_bootstrap.dart';
+import 'services/notification_service.dart';
 import 'services/subscription_service.dart';
 import 'theme/app_theme.dart';
 
@@ -22,6 +23,9 @@ Future<void> main() async {
   }
   // Never throws: without a Firebase config the app runs in local-only mode.
   await FirebaseBootstrap.init();
+  // Resolves getNotificationAppLaunchDetails() for a cold-start deep link
+  // before MainShell ever mounts. Never throws — reminders just won't fire.
+  await NotificationService.instance.init();
   runApp(const HealthTrackerApp());
 }
 

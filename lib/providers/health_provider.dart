@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../services/gemini_service.dart';
 import '../services/health_steps_service.dart';
+import '../services/notification_service.dart';
 
 enum SuggestionStatus { idle, loading, success, error }
 
@@ -134,6 +135,20 @@ class HealthProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  /// Cancels + reschedules today's reminders, suppressing whichever slots are
+  /// already satisfied. Safe to call often — on app start, resume, and once
+  /// at local midnight.
+  Future<void> refreshReminders() async {
+    final today = _today ?? await _repo.getDailySummary();
+    final breakfastLogged =
+        today.meals.any((m) => m.mealType == MealType.breakfast);
+    final suggestionToday = await _repo.hasSuggestionOn(dateKey(DateTime.now()));
+    await NotificationService.instance.rescheduleToday(
+      breakfastLogged: breakfastLogged,
+      suggestionFetchedToday: suggestionToday,
+    );
   }
 
   // ---- logging ----

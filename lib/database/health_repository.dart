@@ -270,6 +270,14 @@ class HealthRepository {
     return rows.map(SuggestionEntry.fromMap).toList();
   }
 
+  /// Whether a suggestion was already fetched on [date] — drives the lunch
+  /// reminder's suppression.
+  Future<bool> hasSuggestionOn(String date) async {
+    final rows = await (await _db).query('suggestion_history',
+        where: _live('date = ?'), whereArgs: [date], limit: 1);
+    return rows.isNotEmpty;
+  }
+
   // ── Aggregates ───────────────────────────────────────────────────────────
 
   Future<DailySummary> getDailySummary([DateTime? day]) async {
