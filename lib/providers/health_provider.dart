@@ -1,15 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/health_repository.dart';
 import '../database/sync_service.dart';
 import '../models/models.dart';
 import '../models/user_profile.dart';
+import '../screens/pantry_screen.dart';
 import '../services/gemini_service.dart';
 import '../services/health_steps_service.dart';
-import '../screens/pantry_screen.dart';
 import '../services/notification_service.dart';
+import '../services/template_matcher.dart';
 import '../services/toast_center.dart';
 
 enum SuggestionStatus { idle, loading, success, error }
@@ -162,7 +164,14 @@ class HealthProvider extends ChangeNotifier {
   Future<VoiceMealParse?> parseVoiceMeal(String transcript) =>
       _ai.parseVoiceMeal(transcript);
 
-  Future<void> addMeal(MealType type, String description) async {
+  /// [offerRoutinePrompt] is false when the meal already came from a
+  /// favorite or a template — no point suggesting "save as routine?" for a
+  /// meal that already is one.
+  Future<void> addMeal(
+    MealType type,
+    String description, {
+    bool offerRoutinePrompt = true,
+  }) async {
     final now = DateTime.now();
     final desc = description.trim();
     await _repo.insertMeal(MealEntry(
@@ -175,6 +184,7 @@ class HealthProvider extends ChangeNotifier {
     // Never blocks the save above: a slow or failed Gemini call just means no
     // pantry update happens this time.
     unawaited(_autoDeductPantry(desc));
+    if (offerRoutinePrompt) unawaited(_maybeOfferSaveAsRoutine(type, desc));
   }
 
   /// Asks Gemini which pantry items this meal likely used up and marks them
@@ -364,6 +374,7 @@ class HealthProvider extends ChangeNotifier {
     if (id == _profileId) return;
     _profileId = id;
     loadFavorites();
+    loadTemplates();
   }
 
   List<MealFavorite> _favorites = [];
@@ -425,10 +436,132 @@ class HealthProvider extends ChangeNotifier {
       foodDescription: favorite.loggedDescription,
       timestamp: now.toIso8601String(),
     ));
-    if (favorite.id != null) await _repo.bumpFavoriteUse(favorite.id!);
+    if (favorite.id != null) {
+      await _repo.bumpFavoriteUse(favorite.id!);
+      unawaited(_maybeOfferSmartRoutine(favorite));
+    }
     await loadFavorites();
     await loadToday();
     unawaited(_autoDeductPantry(favorite.loggedDescription));
+  }
+
+  // ---- meal templates (recurring meals) ----
+
+  List<MealTemplate> _templates = [];
+  List<MealTemplate> get templates => _templates;
+
+  Future<void> loadTemplates() async {
+    try {
+      _templates = await _repo.getMealTemplates(_profileId);
+    } catch (e) {
+      if (kDebugMode) debugPrint('loadTemplates failed: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<void> addTemplate({
+    required DayType dayType,
+    required MealType mealSlot,
+    required String description,
+  }) async {
+    final trimmed = description.trim();
+    if (trimmed.isEmpty) return;
+    await _repo.insertMealTemplate(MealTemplate(
+      profileId: _profileId,
+      dayType: dayType,
+      mealSlot: mealSlot,
+      foodDescription: trimmed,
+      createdAt: DateTime.now().toIso8601String(),
+    ));
+    await loadTemplates();
+  }
+
+  Future<void> deleteTemplate(int id) async {
+    await _repo.deleteMealTemplate(id);
+    await loadTemplates();
+  }
+
+  /// Logs a template's meal in one tap, then quiets today's banner for that
+  /// slot (whether it was "Yes" or dismissed — either way today is settled).
+  Future<void> logTemplateMeal(MealTemplate template) async {
+    await addMeal(template.mealSlot, template.foodDescription,
+        offerRoutinePrompt: false);
+    dismissRoutineSuggestion(template.mealSlot);
+  }
+
+  final _dismissedRoutineSlots = <String>{};
+
+  String _routineDismissKey(MealType slot) =>
+      '${dateKey(DateTime.now())}_${slot.name}';
+
+  void dismissRoutineSuggestion(MealType slot) {
+    _dismissedRoutineSlots.add(_routineDismissKey(slot));
+    notifyListeners();
+  }
+
+  /// The routine banner to show on Home for [slot], or null. Never automatic
+  /// — always requires the "Log it?" tap.
+  MealTemplate? routineSuggestionFor(MealType slot) {
+    if (_dismissedRoutineSlots.contains(_routineDismissKey(slot))) return null;
+    final alreadyLogged =
+        _today?.meals.any((m) => m.mealType == slot) ?? false;
+    if (alreadyLogged) return null;
+    return TemplateMatcher.bestFor(_templates, slot);
+  }
+
+  // ---- "save as routine?" prompts ----
+
+  TemplateSuggestion? _pendingTemplateSuggestion;
+  TemplateSuggestion? get pendingTemplateSuggestion => _pendingTemplateSuggestion;
+
+  void clearTemplateSuggestion() {
+    if (_pendingTemplateSuggestion == null) return;
+    _pendingTemplateSuggestion = null;
+    notifyListeners();
+  }
+
+  /// Generic, one-time-ever nudge after logging any meal manually or by
+  /// voice — never shown twice for the same (slot, description) pair, and
+  /// never for a meal already logged via a favorite or an existing template.
+  Future<void> _maybeOfferSaveAsRoutine(MealType type, String description) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key =
+          'tmpl_prompted_${_profileId}_${type.name}_${description.trim().toLowerCase()}';
+      if (prefs.getBool(key) == true) return;
+      await prefs.setBool(key, true);
+      _pendingTemplateSuggestion = TemplateSuggestion(
+        mealType: type,
+        description: description,
+        message: 'Save this as a routine meal?',
+      );
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('save-as-routine prompt failed: $e');
+    }
+  }
+
+  /// Stronger, data-backed nudge once a favorite has been logged 3+ times in
+  /// the same slot (use_count from meal_favorites, per the spec) — shown once
+  /// per favorite.
+  Future<void> _maybeOfferSmartRoutine(MealFavorite favorite) async {
+    try {
+      final newCount = favorite.useCount + 1; // bumpFavoriteUse just ran
+      if (newCount < 3) return;
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'tmpl_smart_${_profileId}_${favorite.id}';
+      if (prefs.getBool(key) == true) return;
+      await prefs.setBool(key, true);
+      _pendingTemplateSuggestion = TemplateSuggestion(
+        mealType: favorite.mealType,
+        description: favorite.loggedDescription,
+        message: 'You often eat ${favorite.name} for ${favorite.mealType.name} '
+            '— want to add it as your routine?',
+      );
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('smart-routine prompt failed: $e');
+    }
   }
 
   /// True if a meal with this description is already a favorite (drives the
@@ -516,4 +649,18 @@ class ProgressData {
       steps.isEmpty &&
       sleep.isEmpty &&
       mealCountsByDay.isEmpty;
+}
+
+/// A pending "save this as a routine?" prompt — see
+/// [HealthProvider.pendingTemplateSuggestion].
+class TemplateSuggestion {
+  TemplateSuggestion({
+    required this.mealType,
+    required this.description,
+    required this.message,
+  });
+
+  final MealType mealType;
+  final String description;
+  final String message;
 }

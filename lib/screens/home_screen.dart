@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../providers/health_provider.dart';
 import '../providers/profile_controller.dart';
@@ -9,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
 import '../widgets/summary_widgets.dart';
+import 'log_entry_screen.dart';
 import 'settings_screen.dart';
 import 'suggestion_screen.dart';
 
@@ -37,6 +39,16 @@ class _HomeScreenState extends State<HomeScreen>
     if (h < 12) return 'Good morning';
     if (h < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  /// Which meal slot "now" belongs to, for matching a routine — null outside
+  /// meal hours so the banner doesn't linger all day.
+  MealType? _currentMealSlot() {
+    final h = DateTime.now().hour;
+    if (h >= 5 && h < 11) return MealType.breakfast;
+    if (h >= 11 && h < 16) return MealType.lunch;
+    if (h >= 16 && h < 22) return MealType.dinner;
+    return null;
   }
 
   @override
@@ -78,16 +90,27 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           )
                         else if (summary != null) ...[
+                          if (_currentMealSlot() case final slot?)
+                            if (provider.routineSuggestionFor(slot)
+                                case final template?) ...[
+                              StaggeredEntrance(
+                                animation: _entrance,
+                                index: 0,
+                                child: _RoutineBanner(
+                                    slot: slot, template: template),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                            ],
                           StaggeredEntrance(
                             animation: _entrance,
-                            index: 0,
+                            index: 1,
                             child: DailySummaryCard(
                                 summary: summary, goals: goals),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           StaggeredEntrance(
                             animation: _entrance,
-                            index: 1,
+                            index: 2,
                             child: _GoalNote(goals: goals),
                           ),
                           if (summary.meals.isNotEmpty ||
@@ -95,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: AppSpacing.md),
                             StaggeredEntrance(
                               animation: _entrance,
-                              index: 2,
+                              index: 3,
                               child: RecentActivityCard(summary: summary),
                             ),
                           ],
@@ -226,6 +249,85 @@ class _GlowFab extends StatelessWidget {
 }
 
 // ─── GOAL NOTE ──────────────────────────────────────────────────────────────
+
+// ─── ROUTINE BANNER ─────────────────────────────────────────────────────────
+
+/// "Your usual weekday breakfast — Rice + dal + egg. Log it?" — a proactive
+/// suggestion, never an automatic log. Either button settles today for this
+/// slot; "something else" hands off to voice logging.
+class _RoutineBanner extends StatelessWidget {
+  const _RoutineBanner({required this.slot, required this.template});
+  final MealType slot;
+  final MealTemplate template;
+
+  String get _dayLabel => switch (template.dayType) {
+        DayType.weekday => 'weekday',
+        DayType.weekend => 'weekend',
+        DayType.everyday => 'usual',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        boxShadow: kSoftShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const IconBadge(
+                icon: Icons.repeat_rounded,
+                color: AppColors.accent,
+                size: 34,
+                iconSize: 17,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Your $_dayLabel ${slot.name} — ${template.foodDescription}. '
+                  'Log it?',
+                  style: t.bodyLarge?.copyWith(height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              FilledButton(
+                onPressed: () =>
+                    context.read<HealthProvider>().logTemplateMeal(template),
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.md)),
+                child: const Text('Yes, log it'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              TextButton(
+                onPressed: () {
+                  context.read<HealthProvider>().dismissRoutineSuggestion(slot);
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        const LogEntryScreen(initialTab: 0, autoStartVoice: true),
+                  ));
+                },
+                child: const Text('No, something else'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _GoalNote extends StatelessWidget {
   const _GoalNote({required this.goals});

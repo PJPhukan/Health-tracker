@@ -291,6 +291,24 @@ class HealthRepository {
     _sync?.pushSoon();
   }
 
+  // ── Meal templates (recurring meals) ────────────────────────────────────
+
+  Future<int> insertMealTemplate(MealTemplate t) =>
+      _insert('meal_templates', t.toMap());
+
+  Future<int> updateMealTemplate(MealTemplate t) =>
+      _update('meal_templates', t.toMap(), t.id!);
+
+  Future<int> deleteMealTemplate(int id) => _delete('meal_templates', id);
+
+  Future<List<MealTemplate>> getMealTemplates(String profileId) async {
+    final rows = await (await _db).query('meal_templates',
+        where: _live('profileId = ?'),
+        whereArgs: [profileId],
+        orderBy: 'createdAt DESC');
+    return rows.map(MealTemplate.fromMap).toList();
+  }
+
   // ── Suggestions ──────────────────────────────────────────────────────────
 
   Future<int> insertSuggestion(SuggestionEntry e) =>
