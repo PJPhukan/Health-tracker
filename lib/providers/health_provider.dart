@@ -138,12 +138,18 @@ class HealthProvider extends ChangeNotifier {
 
   // ---- logging ----
 
+  /// Voice -> structured meal fields, for the mic button on the meal form.
+  /// Returns null on any failure; the caller falls back to the raw transcript.
+  Future<VoiceMealParse?> parseVoiceMeal(String transcript) =>
+      _ai.parseVoiceMeal(transcript);
+
   Future<void> addMeal(MealType type, String description) async {
     final now = DateTime.now();
+    final desc = description.trim();
     await _repo.insertMeal(MealEntry(
       date: dateKey(now),
       mealType: type,
-      foodDescription: description.trim(),
+      foodDescription: desc,
       timestamp: now.toIso8601String(),
     ));
     await loadToday();

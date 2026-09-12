@@ -19,6 +19,18 @@ class SuggestionResult {
   SuggestionResult({required this.prompt, required this.text});
 }
 
+/// A voice transcript parsed into structured meal-log fields (v4 stage 1).
+class VoiceMealParse {
+  final MealType mealType;
+  final String foodDescription;
+  final List<String> items;
+  VoiceMealParse({
+    required this.mealType,
+    required this.foodDescription,
+    required this.items,
+  });
+}
+
 /// Calls Google Gemini (free tier) via REST. No fallback provider — if the
 /// request fails the caller gets an [AiException] and the UI shows a retry.
 class GeminiService {
@@ -137,5 +149,110 @@ available. Keep it under 130 words.
       throw AiException('Gemini returned an empty response');
     }
     return text;
+  }
+
+  // ── v4: voice logging + pantry auto-deduct ────────────────────────────────
+  //
+  // Both of these are "secondary" AI calls: a failure must never block the
+  // action the user actually asked for (saving a meal). Neither checks
+  // [hasKey] up front — they just attempt the call and turn any failure
+  // (missing key, network, timeout, malformed JSON) into a null/empty result
+  // for the caller to fall back on silently.
+
+  static String _timeOfDayHint() {
+    final h = DateTime.now().hour;
+    if (h < 11) return 'morning (likely breakfast)';
+    if (h < 16) return 'afternoon (likely lunch)';
+    if (h < 21) return 'evening (likely dinner)';
+    return 'night (likely a snack)';
+  }
+
+  /// Turns a raw voice transcript into structured meal fields. Returns null on
+  /// any failure — the caller falls back to showing the raw transcript.
+  Future<VoiceMealParse?> parseVoiceMeal(String transcript) async {
+    final input = transcript.trim();
+    if (input.isEmpty) return null;
+    final prompt = '''
+Parse this voice input into a structured meal entry. Return ONLY valid JSON, no explanation:
+{
+  "mealType": "breakfast|lunch|dinner|snack",
+  "foodDescription": "clean description of what was eaten",
+  "items": ["item1", "item2"]
+}
+Voice input: "$input"
+If meal type isn't clear from context, infer from current time of day: ${_timeOfDayHint()}.
+''';
+    try {
+      final raw = await _callGemini(prompt);
+      final map = jsonDecode(extractJsonObject(raw)) as Map<String, Object?>;
+      final description = (map['foodDescription'] as String?)?.trim();
+      if (description == null || description.isEmpty) return null;
+      final items = (map['items'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.trim().isNotEmpty)
+              .toList() ??
+          const [];
+      return VoiceMealParse(
+        mealType: mealTypeFromString((map['mealType'] as String?) ?? 'snack'),
+        foodDescription: description,
+        items: items,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Asks which of the given [pantry] items were likely used up by
+  /// [foodDescription]. Returns the (exact, pantry-supplied) item names to
+  /// mark low — an empty list on any failure, network or parse.
+  Future<List<String>> suggestPantryDeductions(
+    String foodDescription,
+    List<PantryItem> pantry,
+  ) async {
+    if (pantry.isEmpty || foodDescription.trim().isEmpty) return const [];
+    final stockList = pantry.map((p) => p.itemName).join(', ');
+    final prompt = '''
+Given this meal: "${foodDescription.trim()}"
+And this pantry: [$stockList]
+Return ONLY valid JSON — no explanation:
+{
+  "deductions": [
+    {"itemName": "exact name from pantry list", "deplete": true|false}
+  ]
+}
+deplete = true means this ingredient was likely used and should be marked as low/depleted.
+Only include items from the provided pantry list. Don't invent new items.
+''';
+    try {
+      final raw = await _callGemini(prompt);
+      final map = jsonDecode(extractJsonObject(raw)) as Map<String, Object?>;
+      final deductions = map['deductions'] as List?;
+      if (deductions == null) return const [];
+      final pantryNames = {for (final p in pantry) p.itemName.toLowerCase()};
+      return deductions
+          .whereType<Map>()
+          .where((d) => d['deplete'] == true)
+          .map((d) => (d['itemName'] as String?)?.trim() ?? '')
+          .where((name) =>
+              name.isNotEmpty && pantryNames.contains(name.toLowerCase()))
+          .toList();
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Pulls the first top-level `{...}` object out of a Gemini response,
+  /// tolerating a ```json fenced block or stray prose around it.
+  static String extractJsonObject(String raw) {
+    var s = raw.trim();
+    final fence = RegExp(r'```(?:json)?\s*([\s\S]*?)```');
+    final fenced = fence.firstMatch(s);
+    if (fenced != null) s = fenced.group(1)!.trim();
+    final start = s.indexOf('{');
+    final end = s.lastIndexOf('}');
+    if (start == -1 || end == -1 || end < start) {
+      throw const FormatException('No JSON object found in response');
+    }
+    return s.substring(start, end + 1);
   }
 }
