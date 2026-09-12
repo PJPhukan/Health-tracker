@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
+import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
 import 'restock_screen.dart';
+import 'subscription_screen.dart';
 import 'suggestion_history_screen.dart';
 
 class SuggestionScreen extends StatelessWidget {
@@ -15,12 +17,7 @@ class SuggestionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<HealthProvider>();
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(child: _body(context, provider)),
-          const BannerAdSlot(),
-        ],
-      ),
+      body: _body(context, provider),
     );
   }
 
@@ -196,6 +193,7 @@ class _SuccessViewState extends State<_SuccessView>
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final sections = _parseSuggestion(widget.text);
+    final isPremium = context.watch<SubscriptionService>().isPremium;
 
     return Column(
       children: [
@@ -211,6 +209,8 @@ class _SuccessViewState extends State<_SuccessView>
             itemCount: sections.length + 1,
             itemBuilder: (context, index) {
               if (index == sections.length) {
+                // Order: suggestion card(s) -> banner ad -> "remove ads" link
+                // (free tier only) -> regenerate -> past suggestions.
                 return StaggeredEntrance(
                   animation: _entrance,
                   index: index,
@@ -218,6 +218,12 @@ class _SuccessViewState extends State<_SuccessView>
                     padding: const EdgeInsets.only(top: AppSpacing.md),
                     child: Column(
                       children: [
+                        if (!isPremium) ...[
+                          const BannerAdSlot(),
+                          const SizedBox(height: AppSpacing.xs),
+                          const _RemoveAdsLink(),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
                         _RefreshButton(
                           onPressed: () =>
                               context.read<HealthProvider>().getSuggestion(),
@@ -237,7 +243,11 @@ class _SuccessViewState extends State<_SuccessView>
                 child: Padding(
                   padding: EdgeInsets.only(
                       bottom: index < sections.length - 1 ? AppSpacing.sm : 0),
-                  child: _SuggestionCard(section: section, textTheme: t),
+                  child: _SuggestionCard(
+                    section: section,
+                    textTheme: t,
+                    showAdFreeChip: !isPremium && index == sections.length - 1,
+                  ),
                 ),
               );
             },
@@ -249,9 +259,17 @@ class _SuccessViewState extends State<_SuccessView>
 }
 
 class _SuggestionCard extends StatelessWidget {
-  const _SuggestionCard({required this.section, required this.textTheme});
+  const _SuggestionCard({
+    required this.section,
+    required this.textTheme,
+    this.showAdFreeChip = false,
+  });
   final _SuggestionSection section;
   final TextTheme textTheme;
+
+  /// A small "go ad-free" hint tucked into the bottom-right corner of the
+  /// last card — free tier only, a feature hint rather than an ad itself.
+  final bool showAdFreeChip;
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +335,57 @@ class _SuggestionCard extends StatelessWidget {
               ),
             ),
           ],
+          if (showAdFreeChip) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const SubscriptionScreen())),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: 5),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                        color: AppColors.teal.withValues(alpha: 0.35)),
+                  ),
+                  child: Text(
+                    '✨ Go ad-free',
+                    style: textTheme.labelSmall?.copyWith(
+                        color: AppColors.teal, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Subtle text link — never a competing button — between the ad and the
+/// regenerate button on the free tier.
+class _RemoveAdsLink extends StatelessWidget {
+  const _RemoveAdsLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton(
+        onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SubscriptionScreen())),
+        style: TextButton.styleFrom(
+          minimumSize: Size.zero,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          'Remove ads · Go Premium →',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.textSecondary.withValues(alpha: 0.6)),
+        ),
       ),
     );
   }

@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../providers/health_provider.dart';
 import '../providers/profile_controller.dart';
+import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
 import '../widgets/summary_widgets.dart';
 import 'log_entry_screen.dart';
 import 'settings_screen.dart';
+import 'subscription_screen.dart';
 import 'suggestion_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -69,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           // Fixed gradient header — stays put while the content scrolls.
           _HomeHeader(greeting: _greeting()),
+          const _PremiumUpsellBanner(),
           Expanded(
             child: RefreshIndicator(
               color: AppColors.teal,
@@ -130,7 +133,6 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-          const BannerAdSlot(),
         ],
       ),
     );
@@ -209,6 +211,118 @@ class _HomeHeader extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PREMIUM UPSELL BANNER ──────────────────────────────────────────────────
+
+/// A slim, dismissible "go ad-free" nudge just below the greeting. Never
+/// shown to premium users. Dismissing hides it for 7 days; dismissing a
+/// second time (i.e. after it reappears) hides it for good — tracked in
+/// SharedPreferences, not tied to any one session.
+class _PremiumUpsellBanner extends StatefulWidget {
+  const _PremiumUpsellBanner();
+
+  @override
+  State<_PremiumUpsellBanner> createState() => _PremiumUpsellBannerState();
+}
+
+class _PremiumUpsellBannerState extends State<_PremiumUpsellBanner> {
+  static const _kDismissedAt = 'premium_banner_dismissed_at';
+  static const _kDismissCount = 'premium_banner_dismiss_count';
+  static const _reshowAfter = Duration(days: 7);
+
+  /// null while the SharedPreferences check is still in flight — the banner
+  /// stays hidden rather than flashing on then off.
+  bool? _eligible;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dismissCount = prefs.getInt(_kDismissCount) ?? 0;
+    if (dismissCount >= 2) {
+      if (mounted) setState(() => _eligible = false);
+      return;
+    }
+    final dismissedAtMs = prefs.getInt(_kDismissedAt);
+    final eligible = dismissedAtMs == null ||
+        DateTime.now()
+                .difference(DateTime.fromMillisecondsSinceEpoch(dismissedAtMs)) >=
+            _reshowAfter;
+    if (mounted) setState(() => _eligible = eligible);
+  }
+
+  Future<void> _dismiss() async {
+    setState(() => _eligible = false);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+        _kDismissCount, (prefs.getInt(_kDismissCount) ?? 0) + 1);
+    await prefs.setInt(_kDismissedAt, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPremium = context.watch<SubscriptionService>().isPremium;
+    if (isPremium || _eligible != true) return const SizedBox.shrink();
+
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF0F7F4), Color(0xFFF7F4EE)],
+          ),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          boxShadow: kSoftShadow,
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: _dismiss,
+              tooltip: 'Dismiss',
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.close_rounded,
+                  size: 16, color: AppColors.textSecondary),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                '✨ Stock Plate Premium — go ad-free',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodyMedium?.copyWith(color: AppColors.textPrimary),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const SubscriptionScreen())),
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text('Upgrade',
+                  style: t.labelLarge?.copyWith(
+                      color: AppColors.teal, fontWeight: FontWeight.w700)),
+            ),
+          ],
         ),
       ),
     );
