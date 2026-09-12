@@ -59,6 +59,10 @@ class SubscriptionScreen extends StatelessWidget {
                   ErrorBanner(message: sub.error!),
                   const SizedBox(height: AppSpacing.md),
                 ],
+                if (!sub.isPremium) ...[
+                  const _ValueProp(),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -126,6 +130,43 @@ class SubscriptionScreen extends StatelessWidget {
 
   String _storeName() {
     return 'App Store / Play Store';
+  }
+}
+
+/// Three-line value pitch shown above the plan comparison, free tier only.
+class _ValueProp extends StatelessWidget {
+  const _ValueProp();
+
+  static const _bullets = [
+    'No ads anywhere in the app',
+    'Cleaner suggestion experience',
+    'Support independent development',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Go ad-free with Premium',
+            style: t.headlineSmall?.copyWith(color: AppColors.teal)),
+        const SizedBox(height: AppSpacing.sm),
+        for (final bullet in _bullets)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    size: 18, color: AppColors.onTrack),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(child: Text(bullet, style: t.bodyLarge)),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 

@@ -332,18 +332,19 @@ class _SubscriptionCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(premium ? 'Premium' : 'Free plan', style: t.titleMedium),
+                Text('Stock Plate Premium', style: t.titleMedium),
                 Text(
-                  premium
-                      ? 'No ads. Manage or restore your subscription.'
-                      : 'Go Premium to remove ads.',
+                  'Remove ads · Unlimited access',
                   style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded,
-              color: AppColors.textSecondary),
+          Text(
+            premium ? 'Manage subscription' : 'Upgrade',
+            style: t.labelLarge?.copyWith(
+                color: AppColors.teal, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
