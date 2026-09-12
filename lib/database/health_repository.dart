@@ -225,6 +225,39 @@ class HealthRepository {
 
   Future<int> deletePantryItem(int id) => _delete('pantry_items', id);
 
+  /// Adds many items at once (pantry onboarding checklist) in a single
+  /// transaction. Skips names already present (case-insensitive) so redoing
+  /// the checklist from Settings never creates duplicates.
+  Future<int> addPantryItemsBatch(List<String> names) async {
+    final trimmed = names.map((n) => n.trim()).where((n) => n.isNotEmpty).toSet();
+    if (trimmed.isEmpty) return 0;
+    final db = await _db;
+    final existing = (await db.query('pantry_items', where: _live(), columns: ['itemName']))
+        .map((r) => (r['itemName'] as String).toLowerCase())
+        .toSet();
+    final toAdd = trimmed.where((n) => !existing.contains(n.toLowerCase())).toList();
+    if (toAdd.isEmpty) return 0;
+
+    final now = _now();
+    await db.transaction((txn) async {
+      for (final name in toAdd) {
+        final row = {
+          'itemName': name,
+          'quantity': '',
+          'isLow': 0,
+          'lastUpdated': now,
+          'syncId': _sync?.newSyncId('pantry_items') ?? _fallbackId('pantry_items', null),
+          'pendingSync': 1,
+          'syncDeleted': 0,
+          'syncUpdatedAt': now,
+        };
+        await txn.insert('pantry_items', row);
+      }
+    });
+    _sync?.pushSoon();
+    return toAdd.length;
+  }
+
   Future<List<PantryItem>> getAllPantryItems() async {
     final rows = await (await _db).query('pantry_items',
         where: _live(), orderBy: 'isLow DESC, itemName COLLATE NOCASE ASC');
