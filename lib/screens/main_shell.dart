@@ -43,6 +43,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // permission is already granted. Never prompts here.
       await health.initHealthSync();
       await health.loadToday();
+      // Shows today's cached suggestion instantly, or generates one silently
+      // if this is the first open of a new day. Never shows a spinner for
+      // this — Home's preview card just displays a placeholder until it
+      // resolves.
+      await health.initTodaySuggestion();
       // Requesting is a no-op once the user has already granted or denied —
       // safe to call on every launch rather than tracking a "did we ask" flag.
       await NotificationService.instance.requestPermission();

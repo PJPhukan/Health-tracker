@@ -61,8 +61,15 @@ class _HomeScreenState extends State<HomeScreen>
 
     return Scaffold(
       floatingActionButton: _GlowFab(
+        hasTodaySuggestion: provider.hasTodaySuggestion,
         onPressed: () {
-          context.read<HealthProvider>().getSuggestion();
+          if (provider.hasTodaySuggestion) {
+            // Ad-gated on the free tier — see suggestion_screen.dart. Fired
+            // without waiting so navigation feels instant either way.
+            regenerateSuggestionFlow(context);
+          } else {
+            context.read<HealthProvider>().getSuggestion();
+          }
           Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SuggestionScreen()));
         },
@@ -114,6 +121,13 @@ class _HomeScreenState extends State<HomeScreen>
                           StaggeredEntrance(
                             animation: _entrance,
                             index: 2,
+                            child: _SuggestionPreviewCard(
+                                suggestion: provider.todaySuggestion),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          StaggeredEntrance(
+                            animation: _entrance,
+                            index: 3,
                             child: _GoalNote(goals: goals),
                           ),
                           if (summary.meals.isNotEmpty ||
@@ -121,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: AppSpacing.md),
                             StaggeredEntrance(
                               animation: _entrance,
-                              index: 3,
+                              index: 4,
                               child: RecentActivityCard(summary: summary),
                             ),
                           ],
@@ -332,14 +346,18 @@ class _PremiumUpsellBannerState extends State<_PremiumUpsellBanner> {
 // ─── GLOW FAB ───────────────────────────────────────────────────────────────
 
 class _GlowFab extends StatelessWidget {
-  const _GlowFab({required this.onPressed});
+  const _GlowFab({required this.onPressed, required this.hasTodaySuggestion});
   final VoidCallback onPressed;
+
+  /// Once today's suggestion exists, the FAB relabels to make clear a tap
+  /// regenerates rather than fetches for the first time.
+  final bool hasTodaySuggestion;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
             color: AppColors.accent.withValues(alpha: 0.35),
@@ -349,14 +367,80 @@ class _GlowFab extends StatelessWidget {
           ),
         ],
       ),
-      child: FloatingActionButton(
+      child: FloatingActionButton.extended(
         onPressed: onPressed,
         backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         elevation: 0,
         highlightElevation: 0,
-        tooltip: 'Get Suggestion',
-        child: const Icon(Icons.auto_awesome_rounded),
+        icon: const Icon(Icons.auto_awesome_rounded),
+        label: Text(hasTodaySuggestion
+            ? 'Get New Suggestion \u{1F504}'
+            : 'Get Suggestion'),
+      ),
+    );
+  }
+}
+
+// ─── SUGGESTION PREVIEW CARD ────────────────────────────────────────────────
+
+/// "Today's suggestion: …" below the summary metrics — a peek, not the full
+/// text; tapping opens the Suggestion screen where the cached copy is
+/// already loaded (see HealthProvider.initTodaySuggestion).
+class _SuggestionPreviewCard extends StatelessWidget {
+  const _SuggestionPreviewCard({required this.suggestion});
+  final SuggestionEntry? suggestion;
+
+  static const _previewLength = 60;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final response = suggestion?.response.trim();
+    final preview = (response == null || response.isEmpty)
+        ? null
+        : (response.length > _previewLength
+            ? '${response.substring(0, _previewLength)}…'
+            : response);
+
+    return SoftCard(
+      onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SuggestionScreen())),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const IconBadge(
+            icon: Icons.auto_awesome_rounded,
+            color: AppColors.accent,
+            size: 32,
+            iconSize: 16,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const MetaLabel("Today's suggestion"),
+                const SizedBox(height: 2),
+                Text(
+                  preview ?? "Tap below to get today's meal suggestion",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium,
+                ),
+                if (preview != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Read more →',
+                    style: t.labelLarge?.copyWith(
+                        color: AppColors.teal, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

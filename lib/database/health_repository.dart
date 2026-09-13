@@ -329,6 +329,26 @@ class HealthRepository {
     return rows.isNotEmpty;
   }
 
+  /// The most recent suggestion generated today, or null if none has been
+  /// generated yet today — the cache [SuggestionCacheService] reads from.
+  /// "Regenerating" simply inserts another row for the same date; this
+  /// always returns the newest one, so a fresh row transparently replaces
+  /// the cached one while the full history stays intact for the suggestion
+  /// history screen.
+  Future<SuggestionEntry?> getTodaySuggestion() async {
+    final rows = await (await _db).query('suggestion_history',
+        where: _live('date = ?'),
+        whereArgs: [dateKey(DateTime.now())],
+        orderBy: 'timestamp DESC',
+        limit: 1);
+    return rows.isEmpty ? null : SuggestionEntry.fromMap(rows.first);
+  }
+
+  /// True when [entry] was generated today — guards against a suggestion
+  /// held in memory since before a midnight rollover being shown as "today's".
+  bool isFromToday(SuggestionEntry entry) =>
+      entry.date == dateKey(DateTime.now());
+
   // ── Aggregates ───────────────────────────────────────────────────────────
 
   Future<DailySummary> getDailySummary([DateTime? day]) async {

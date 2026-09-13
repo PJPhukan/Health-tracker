@@ -171,4 +171,72 @@ void main() {
       expect(await repo.getMealTemplates('local'), isEmpty);
     });
   });
+
+  group('getTodaySuggestion / isFromToday (suggestion cache)', () {
+    setUp(() async {
+      final db = await helper.database;
+      await db.delete('suggestion_history');
+    });
+
+    test('returns null when nothing has been generated today', () async {
+      expect(await repo.getTodaySuggestion(), isNull);
+    });
+
+    test('returns the suggestion generated today', () async {
+      await repo.insertSuggestion(SuggestionEntry(
+        date: today(),
+        prompt: 'p',
+        response: 'Eat rice and dal',
+        timestamp: DateTime.now().toIso8601String(),
+      ));
+      final cached = await repo.getTodaySuggestion();
+      expect(cached?.response, 'Eat rice and dal');
+      expect(repo.isFromToday(cached!), isTrue);
+    });
+
+    test('regenerating (a second insert for today) is read as the newest',
+        () async {
+      await repo.insertSuggestion(SuggestionEntry(
+        date: today(),
+        prompt: 'p',
+        response: 'first',
+        timestamp: DateTime.now()
+            .subtract(const Duration(minutes: 5))
+            .toIso8601String(),
+      ));
+      await repo.insertSuggestion(SuggestionEntry(
+        date: today(),
+        prompt: 'p',
+        response: 'second',
+        timestamp: DateTime.now().toIso8601String(),
+      ));
+      final cached = await repo.getTodaySuggestion();
+      expect(cached?.response, 'second');
+    });
+
+    test('a suggestion from a past date is not "today\'s" and is ignored',
+        () async {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final entry = SuggestionEntry(
+        date: dateKey(yesterday),
+        prompt: 'p',
+        response: 'old',
+        timestamp: yesterday.toIso8601String(),
+      );
+      await repo.insertSuggestion(entry);
+      expect(await repo.getTodaySuggestion(), isNull);
+      expect(repo.isFromToday(entry), isFalse);
+    });
+
+    test('hasSuggestionOn matches getTodaySuggestion for today', () async {
+      expect(await repo.hasSuggestionOn(today()), isFalse);
+      await repo.insertSuggestion(SuggestionEntry(
+        date: today(),
+        prompt: 'p',
+        response: 'r',
+        timestamp: DateTime.now().toIso8601String(),
+      ));
+      expect(await repo.hasSuggestionOn(today()), isTrue);
+    });
+  });
 }

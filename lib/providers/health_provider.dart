@@ -11,6 +11,7 @@ import '../screens/pantry_screen.dart';
 import '../services/gemini_service.dart';
 import '../services/health_steps_service.dart';
 import '../services/notification_service.dart';
+import '../services/suggestion_cache_service.dart';
 import '../services/template_matcher.dart';
 import '../services/toast_center.dart';
 
@@ -22,15 +23,20 @@ class HealthProvider extends ChangeNotifier {
     GeminiService? ai,
     HealthStepsService? healthSteps,
     SyncService? sync,
+    SuggestionCacheService? suggestionCache,
   })  : _sync = sync,
         _repo = repo ?? HealthRepository(sync: sync),
         _ai = ai ?? GeminiService(),
-        _healthSteps = healthSteps ?? HealthStepsService();
+        _healthSteps = healthSteps ?? HealthStepsService() {
+    _cache = suggestionCache ??
+        SuggestionCacheService(repo: _repo, ai: _ai);
+  }
 
   final HealthRepository _repo;
   final GeminiService _ai;
   final HealthStepsService _healthSteps;
   final SyncService? _sync;
+  late final SuggestionCacheService _cache;
 
   /// Pull the cloud copy down, flush pending local writes, then refresh the UI.
   /// Called on login and on every app resume; a no-op in local-only mode.
@@ -66,6 +72,14 @@ class HealthProvider extends ChangeNotifier {
 
   String? _suggestionError;
   String? get suggestionError => _suggestionError;
+
+  /// The cached row backing [suggestionText] — null until the first
+  /// suggestion of the day exists. Home reads this for its preview card and
+  /// to decide the FAB's label; the Suggestion screen reads it for the
+  /// "Suggested at …" timestamp.
+  SuggestionEntry? _todaySuggestion;
+  SuggestionEntry? get todaySuggestion => _todaySuggestion;
+  bool get hasTodaySuggestion => _todaySuggestion != null;
 
   String? _loadError;
   String? get loadError => _loadError;
@@ -581,7 +595,42 @@ class HealthProvider extends ChangeNotifier {
 
   // ---- AI ----
 
-  Future<void> getSuggestion() async {
+  /// Called once on app start (after [loadToday]). Shows today's cached
+  /// suggestion instantly if one exists; otherwise generates one silently —
+  /// no loading spinner surfaces for this, Home's preview card just shows its
+  /// placeholder until it resolves. A failure here (offline, no key) is
+  /// swallowed: the user simply sees "no suggestion yet" and can tap to try.
+  Future<void> initTodaySuggestion() async {
+    try {
+      final summary = _today ?? await _repo.getDailySummary();
+      final pantry = await _repo.getAllPantryItems();
+      final entry = await _cache.ensureToday(summary, pantry, _goals);
+      if (entry == null) return;
+      _todaySuggestion = entry;
+      _suggestionText = entry.response;
+      _suggestionStatus = SuggestionStatus.success;
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('initTodaySuggestion failed: $e');
+    }
+  }
+
+  /// First suggestion of the day. Kept as a distinct name from
+  /// [regenerateSuggestion] for callers' clarity even though the underlying
+  /// operation — generate, cache, become "today's" — is identical; by the
+  /// time either the Home FAB or the Suggestion screen's button can be
+  /// showing "get new", a suggestion already exists, so there's no case
+  /// where the wrong one gets called.
+  Future<void> getSuggestion() => _generateAndCache();
+
+  /// Forces a fresh suggestion, replacing the cached one for today (a new
+  /// row is inserted; [HealthRepository.getTodaySuggestion] always reads the
+  /// newest, so the old row survives in suggestion_history for the history
+  /// screen). Ad-gating and the upgrade nudge live in the UI layer — see
+  /// `regenerateSuggestionFlow` in suggestion_screen.dart.
+  Future<void> regenerateSuggestion() => _generateAndCache();
+
+  Future<void> _generateAndCache() async {
     _suggestionStatus = SuggestionStatus.loading;
     _suggestionError = null;
     notifyListeners();
@@ -589,21 +638,15 @@ class HealthProvider extends ChangeNotifier {
     try {
       final summary = _today ?? await _repo.getDailySummary();
       final pantry = await _repo.getAllPantryItems();
-      final result = await _ai.getSuggestion(summary, pantry, _goals);
-      _suggestionText = result.text;
+      final entry = await _cache.regenerate(summary, pantry, _goals);
+      _todaySuggestion = entry;
+      _suggestionText = entry.response;
       _suggestionStatus = SuggestionStatus.success;
-
-      await _repo.insertSuggestion(SuggestionEntry(
-        date: summary.date,
-        prompt: result.prompt,
-        response: result.text,
-        timestamp: DateTime.now().toIso8601String(),
-      ));
     } catch (e) {
       _suggestionStatus = SuggestionStatus.error;
       _suggestionError =
           e is AiException ? e.message : "Couldn't get suggestion, try again.";
-      if (kDebugMode) debugPrint('getSuggestion failed: $e');
+      if (kDebugMode) debugPrint('generate suggestion failed: $e');
     }
     notifyListeners();
   }

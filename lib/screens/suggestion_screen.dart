@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
@@ -9,6 +10,18 @@ import '../widgets/common.dart';
 import 'restock_screen.dart';
 import 'subscription_screen.dart';
 import 'suggestion_history_screen.dart';
+
+String _formatTime(String iso) {
+  final d = DateTime.tryParse(iso);
+  return d == null ? '' : DateFormat('h:mm a').format(d);
+}
+
+/// The single entry point for a deliberate "get a new suggestion" action —
+/// used by both this screen's regenerate button and the Home FAB once
+/// today's suggestion already exists. Stage 2 (ad-gating) hooks in here.
+Future<void> regenerateSuggestionFlow(BuildContext context) async {
+  await context.read<HealthProvider>().regenerateSuggestion();
+}
 
 class SuggestionScreen extends StatelessWidget {
   const SuggestionScreen({super.key});
@@ -194,6 +207,7 @@ class _SuccessViewState extends State<_SuccessView>
     final t = Theme.of(context).textTheme;
     final sections = _parseSuggestion(widget.text);
     final isPremium = context.watch<SubscriptionService>().isPremium;
+    final todaySuggestion = context.watch<HealthProvider>().todaySuggestion;
 
     return Column(
       children: [
@@ -218,6 +232,22 @@ class _SuccessViewState extends State<_SuccessView>
                     padding: const EdgeInsets.only(top: AppSpacing.md),
                     child: Column(
                       children: [
+                        if (todaySuggestion != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                bottom: AppSpacing.sm, left: 4),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Suggested at ${_formatTime(todaySuggestion.timestamp)}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ),
+                        ],
                         if (!isPremium) ...[
                           const BannerAdSlot(),
                           const SizedBox(height: AppSpacing.xs),
@@ -225,8 +255,7 @@ class _SuccessViewState extends State<_SuccessView>
                           const SizedBox(height: AppSpacing.sm),
                         ],
                         _RefreshButton(
-                          onPressed: () =>
-                              context.read<HealthProvider>().getSuggestion(),
+                          onPressed: () => regenerateSuggestionFlow(context),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         const _PastSuggestionsButton(),
@@ -420,7 +449,7 @@ class _RefreshButton extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                'Get a new suggestion',
+                'Get New Suggestion \u{1F504}',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: AppColors.teal,
                     ),
