@@ -245,3 +245,35 @@ package) stand in instead of a full-screen spinner: Home's summary tiles +
 suggestion preview, Progress's chart cards, and History's day-card list.
 No setup needed — `flutter pub get` picks up the new `shimmer` dependency
 in `pubspec.yaml`.
+
+## 13. Text-to-speech (v4)
+
+Reads suggestion cards and pantry buy lists aloud via `flutter_tts` —
+on-device, no API key, no backend. `lib/services/tts_service.dart` is a
+singleton wrapping one `FlutterTts` instance; speaker buttons
+(`lib/widgets/tts_speaker_button.dart`) tag their `speak()` calls
+(`'suggestion'` vs `'buylist'`) so only one utterance plays app-wide at a
+time and each button still knows whether *it* is the one playing.
+
+It's a reading aid, not a music player: nothing ever auto-plays, and
+playback always stops on screen navigation (`_SuccessView.dispose()`) and on
+backgrounding (`MainShell.didChangeAppLifecycleState`). Users can turn it
+off entirely in Settings ▸ Accessibility ▸ Text-to-speech (defaults on,
+persisted in SharedPreferences as `ttsEnabled`) — off hides every speaker
+button app-wide.
+
+- **Android**: no extra permissions. Uses whatever TTS engine is installed
+  (Google's by default); if none is available, `flutter_tts` surfaces an
+  error and the app shows "Text-to-speech isn't available on this device"
+  instead of failing silently.
+- **iOS**: `AppDelegate.swift` sets the audio session category to
+  `.playback` on launch so speech plays through the normal audio route.
+  `Info.plist` intentionally has **no** `audio` entry in
+  `UIBackgroundModes` — playback is meant to stop the moment the app isn't
+  foreground, not continue like a music player.
+- **Known limitation**: there's no reliable, dependency-free way to detect
+  "device is on silent/mute" from Dart on either platform — `flutter_tts`
+  doesn't expose it, and doing so properly needs a native audio-focus/volume
+  plugin that wasn't part of this pass. The "isn't available on this
+  device" snackbar covers the engine-missing case; a true silent-mode
+  warning would need a follow-up with e.g. a volume-detection plugin.
