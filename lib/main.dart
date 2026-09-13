@@ -11,6 +11,7 @@ import 'providers/profile_controller.dart';
 import 'screens/splash_screen.dart';
 import 'services/ad_service.dart';
 import 'services/firebase_bootstrap.dart';
+import 'services/guest_service.dart';
 import 'services/notification_service.dart';
 import 'services/subscription_service.dart';
 import 'services/toast_center.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
   // Resolves getNotificationAppLaunchDetails() for a cold-start deep link
   // before MainShell ever mounts. Never throws — reminders just won't fire.
   await NotificationService.instance.init();
+  await GuestService.instance.init();
   runApp(const HealthTrackerApp());
 }
 
@@ -39,6 +41,7 @@ class HealthTrackerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ProfileController()),
+        ChangeNotifierProvider.value(value: GuestService.instance),
         // Owns the SQLite <-> Firestore sync; bound to the signed-in uid below.
         Provider(create: (_) => SyncService()),
         // RevenueCat — identifies to the signed-in account so entitlements

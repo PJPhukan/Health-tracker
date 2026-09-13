@@ -151,6 +151,64 @@ available. Keep it under 130 words.
     return text;
   }
 
+  /// Instant meal suggestion for the 60-second first-run experience.
+  /// Calls Gemini using the exact prompt requested, with a graceful fallback
+  /// if offline or without an API key.
+  Future<String> getQuickStartSuggestion({
+    required List<String> ingredients,
+    required String goal,
+    required String mealTime,
+  }) async {
+    final prompt = '''
+I have these ingredients: ${ingredients.join(', ')}.
+My goal is: $goal.
+Suggest ONE practical meal I can make right now for $mealTime.
+Keep it under 100 words, practical and direct. Start with the meal name, then brief instructions.
+''';
+
+    if (hasKey) {
+      try {
+        return await _callGemini(prompt);
+      } catch (e) {
+        // Fall back to offline generator below if network or quota fails
+      }
+    }
+
+    return _fallbackQuickSuggestion(ingredients, goal, mealTime);
+  }
+
+  String _fallbackQuickSuggestion(
+    List<String> ingredients,
+    String goal,
+    String mealTime,
+  ) {
+    final lower = ingredients.map((e) => e.toLowerCase()).toSet();
+    if (lower.contains('eggs') || lower.contains('bread')) {
+      return 'Savory Scrambled Eggs on Toast\n\n'
+          'Whisk 2-3 eggs with salt and pepper. Sauté diced onion and tomato '
+          'in a little ghee or oil until tender, then pour in eggs and scramble gently. '
+          'Serve over warm toasted bread for a quick, protein-rich $mealTime meal '
+          'perfect for your goal to $goal.';
+    }
+    if (lower.contains('rice') || lower.contains('dal')) {
+      return 'Comforting One-Pot Dal Khichdi\n\n'
+          'Rinse dal and rice together. Sauté diced onion, tomato, and spices in ghee, '
+          'then add rice, dal, and water (1:3 ratio). Simmer until creamy and soft. '
+          'A balanced, wholesome $mealTime bowl supporting your journey to $goal.';
+    }
+    if (lower.contains('chicken')) {
+      return 'Quick Skillet Spiced Chicken\n\n'
+          'Dice chicken into bite-sized pieces. Sear in a hot pan with onion, tomato, '
+          'and your favorite seasoning until cooked through and golden. High in lean protein '
+          'to power your progress toward $goal.';
+    }
+    final firstTwo = ingredients.take(2).join(' and ');
+    return 'Nourishing $firstTwo Bowl\n\n'
+        'Combine $firstTwo with available kitchen staples. Lightly sauté and season '
+        'to taste for a satisfying, nutrient-dense $mealTime dish crafted to support '
+        'your goal to $goal.';
+  }
+
   // ── v4: voice logging + pantry auto-deduct ────────────────────────────────
   //
   // Both of these are "secondary" AI calls: a failure must never block the

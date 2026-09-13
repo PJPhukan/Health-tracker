@@ -3,10 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
+import '../services/guest_service.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
+import '../widgets/guest_gate_dialog.dart';
 import 'restock_screen.dart';
 import 'subscription_screen.dart';
 import 'suggestion_history_screen.dart';
@@ -20,7 +22,16 @@ String _formatTime(String iso) {
 /// used by both this screen's regenerate button and the Home FAB once
 /// today's suggestion already exists. Stage 2 (ad-gating) hooks in here.
 Future<void> regenerateSuggestionFlow(BuildContext context) async {
-  await context.read<HealthProvider>().regenerateSuggestion();
+  final guest = context.read<GuestService>();
+  if (!guest.canRequestSuggestion) {
+    showGuestSoftGate(context);
+    return;
+  }
+  final health = context.read<HealthProvider>();
+  if (guest.isGuest) {
+    await guest.recordSuggestionUsed();
+  }
+  await health.regenerateSuggestion();
 }
 
 class SuggestionScreen extends StatelessWidget {

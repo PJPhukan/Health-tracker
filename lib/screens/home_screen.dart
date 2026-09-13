@@ -7,10 +7,14 @@ import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../providers/health_provider.dart';
 import '../providers/profile_controller.dart';
+import '../services/guest_service.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/guest_gate_dialog.dart';
+import '../widgets/skeletons.dart';
 import '../widgets/summary_widgets.dart';
+import 'auth/signup_screen.dart';
 import 'log_entry_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
@@ -63,6 +67,14 @@ class _HomeScreenState extends State<HomeScreen>
       floatingActionButton: _GlowFab(
         hasTodaySuggestion: provider.hasTodaySuggestion,
         onPressed: () {
+          final guest = context.read<GuestService>();
+          if (!guest.canRequestSuggestion) {
+            showGuestSoftGate(context);
+            return;
+          }
+          if (guest.isGuest) {
+            guest.recordSuggestionUsed();
+          }
           if (provider.hasTodaySuggestion) {
             // Ad-gated on the free tier — see suggestion_screen.dart. Fired
             // without waiting so navigation feels instant either way.
@@ -76,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       body: Column(
         children: [
+          const _GuestModeBanner(),
           // Fixed gradient header — stays put while the content scrolls.
           _HomeHeader(greeting: _greeting()),
           const _PremiumUpsellBanner(),
@@ -91,15 +104,15 @@ class _HomeScreenState extends State<HomeScreen>
                         AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        if (provider.loading && summary == null)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 64),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                  color: AppColors.teal),
-                            ),
-                          )
-                        else if (summary != null) ...[
+                        if (summary == null) ...[
+                          // Shape-matched skeletons instead of a spinner —
+                          // covers both the loading state and the one frame
+                          // before MainShell's post-frame load kicks in (the
+                          // splash pre-load usually means this never shows).
+                          const HomeSummarySkeleton(),
+                          const SizedBox(height: AppSpacing.md),
+                          const HomeSuggestionSkeleton(),
+                        ] else ...[
                           if (_currentMealSlot() case final slot?)
                             if (provider.routineSuggestionFor(slot)
                                 case final template?) ...[
@@ -578,3 +591,67 @@ class _GoalNote extends StatelessWidget {
   static String _h(double v) =>
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 }
+
+/// Slim persistent banner displayed at top of Home screen in guest mode.
+class _GuestModeBanner extends StatelessWidget {
+  const _GuestModeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final isGuest = context.watch<GuestService>().isGuest;
+    if (!isGuest) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      color: AppColors.teal,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 8,
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Row(
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 16,
+              color: Colors.white70,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                "You're in guest mode — save your data",
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+            InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SignupScreen(isMotivated: true),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Text(
+                  'Sign up free →',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        decoration: TextDecoration.underline,
+                      ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

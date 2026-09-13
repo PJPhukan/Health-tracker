@@ -1,12 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/user_profile.dart';
 import '../../providers/auth_controller.dart';
+import '../../providers/health_provider.dart';
+import '../../providers/profile_controller.dart';
+import '../../services/guest_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/auth_widgets.dart';
+import '../main_shell.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({
+    super.key,
+    this.isMotivated = false,
+    this.initialIngredients,
+    this.initialGoal,
+    this.initialSuggestion,
+  });
+
+  final bool isMotivated;
+  final List<String>? initialIngredients;
+  final PrimaryGoal? initialGoal;
+  final String? initialSuggestion;
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -39,6 +56,65 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
+  bool get _shouldMigrate =>
+      widget.isMotivated ||
+      GuestService.instance.isGuest ||
+      widget.initialIngredients != null;
+
+  Future<void> _handlePostSignupMigration() async {
+    final auth = context.read<AuthController>();
+    final health = context.read<HealthProvider>();
+    final profileCtrl = context.read<ProfileController>();
+    final guest = GuestService.instance;
+
+    final ingredients =
+        widget.initialIngredients ?? guest.quickStartIngredients;
+    final goal =
+        widget.initialGoal ?? guest.quickStartGoal ?? PrimaryGoal.maintain;
+    final suggestion =
+        widget.initialSuggestion ?? guest.quickStartSuggestion;
+
+    if (ingredients.isNotEmpty) {
+      await health.addPantryItemsBatch(ingredients);
+    }
+    if (suggestion != null && suggestion.isNotEmpty) {
+      await health.seedInitialSuggestion(suggestion);
+    }
+
+    final defaultGoals = GuestService.defaultGoalsFor(goal);
+    final user = auth.user;
+    final draftProfile = UserProfile(
+      uid: auth.profileId,
+      email: user?.email,
+      displayName:
+          user?.displayName ?? user?.email?.split('@').first ?? 'Friend',
+      age: 28,
+      gender: Gender.other,
+      heightCm: 170,
+      currentWeightKg: 70,
+      targetWeightKg: 70,
+      activityLevel: ActivityLevel.light,
+      primaryGoal: goal,
+      goals: defaultGoals,
+      onboardingComplete: true, // Skip 6-step wizard for now
+      updatedAt: DateTime.now().toIso8601String(),
+    );
+    await profileCtrl.updateProfile(draftProfile);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('v4_pantry_onboarded_${auth.profileId}', true);
+
+    await guest.markGuestConverted();
+    await guest.setPendingProfilePrompt(true);
+
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+        (route) => false,
+      );
+    }
+  }
+
   Future<void> _submit() async {
     final problem = _validate();
     if (problem != null) {
@@ -47,21 +123,49 @@ class _SignupScreenState extends State<SignupScreen> {
     }
     setState(() => _notice = null);
     FocusScope.of(context).unfocus();
-    // On success the auth gate replaces this route with onboarding.
-    await context.read<AuthController>().signUp(_email.text, _password.text);
+
+    final ok = await context
+        .read<AuthController>()
+        .signUp(_email.text, _password.text);
+    if (ok && mounted && _shouldMigrate) {
+      await _handlePostSignupMigration();
+    }
+  }
+
+  Future<void> _submitGoogle() async {
+    FocusScope.of(context).unfocus();
+    final ok = await context.read<AuthController>().signInWithGoogle();
+    if (ok && mounted && _shouldMigrate) {
+      await _handlePostSignupMigration();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final message = auth.error ?? _notice;
+    final isMotivated = widget.isMotivated || GuestService.instance.isGuest;
 
     return AuthScaffold(
-      title: 'Create your account',
-      subtitle: 'A minute of setup, then your targets are personal.',
+      title: isMotivated
+          ? 'Save your suggestion and start tracking'
+          : 'Create your account',
+      subtitle: isMotivated
+          ? 'Free account — takes 30 seconds to keep your meals and pantry synced.'
+          : 'A minute of setup, then your targets are personal.',
       children: [
         if (message != null) ...[
           ErrorBanner(message: message),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        // In motivated mode, Google Sign-In is the PRIMARY button at the top!
+        if (isMotivated) ...[
+          GoogleButton(
+            label: 'Sign up with Google',
+            onPressed: auth.busy ? null : _submitGoogle,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const OrDivider(label: 'Or sign up with email'),
           const SizedBox(height: AppSpacing.md),
         ],
         AuthField(
@@ -102,19 +206,24 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         const SizedBox(height: AppSpacing.lg),
         BusyButton(
-            label: 'Create account', busy: auth.busy, onPressed: _submit),
-        const SizedBox(height: AppSpacing.md),
-        const OrDivider(),
-        const SizedBox(height: AppSpacing.md),
-        GoogleButton(
-          label: 'Sign up with Google',
-          onPressed: auth.busy
-              ? null
-              : () => context.read<AuthController>().signInWithGoogle(),
+          label: isMotivated ? 'Sign up with email' : 'Create account',
+          busy: auth.busy,
+          onPressed: _submit,
         ),
+        // In standard mode, Google button is below the divider
+        if (!isMotivated) ...[
+          const SizedBox(height: AppSpacing.md),
+          const OrDivider(),
+          const SizedBox(height: AppSpacing.md),
+          GoogleButton(
+            label: 'Sign up with Google',
+            onPressed: auth.busy ? null : _submitGoogle,
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text('Already have an account?',
                 style: Theme.of(context)

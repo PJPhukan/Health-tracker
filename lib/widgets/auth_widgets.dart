@@ -141,7 +141,8 @@ class ErrorBanner extends StatelessWidget {
 
 /// "or" rule between the email form and the Google button.
 class OrDivider extends StatelessWidget {
-  const OrDivider({super.key});
+  const OrDivider({super.key, this.label = 'or'});
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +151,7 @@ class OrDivider extends StatelessWidget {
         const Expanded(child: Divider(color: AppColors.divider)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          child: Text('or',
+          child: Text(label,
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium

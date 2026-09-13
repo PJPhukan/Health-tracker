@@ -654,6 +654,22 @@ class HealthProvider extends ChangeNotifier {
   /// Past AI suggestions, newest first — for the suggestion history screen.
   Future<List<SuggestionEntry>> suggestionHistory() => _repo.getSuggestions();
 
+  /// Saves the first-run Quick Start instant suggestion directly into history
+  /// and marks it as today's suggestion.
+  Future<void> seedInitialSuggestion(String suggestionText) async {
+    final entry = SuggestionEntry(
+      date: dateKey(DateTime.now()),
+      prompt: 'Quick Start instant suggestion',
+      response: suggestionText,
+      timestamp: DateTime.now().toIso8601String(),
+    );
+    await _repo.insertSuggestion(entry);
+    _todaySuggestion = entry;
+    _suggestionText = suggestionText;
+    _suggestionStatus = SuggestionStatus.success;
+    notifyListeners();
+  }
+
   // ---- progress dashboard ----
 
   /// One shot of everything the Progress screen charts + streaks need.

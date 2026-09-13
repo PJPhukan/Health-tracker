@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/health_provider.dart';
+import '../services/guest_service.dart';
 import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
 import 'log_entry_screen.dart';
+import 'onboarding/onboarding_flow.dart';
 import 'pantry_screen.dart';
 import 'progress_screen.dart';
 import 'suggestion_screen.dart';
@@ -55,7 +57,91 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _armMidnightTimer();
       // A cold-start tap resolves before this widget exists; pick it up now.
       _handleDeepLink();
+
+      if (GuestService.instance.pendingProfilePrompt && mounted) {
+        await GuestService.instance.setPendingProfilePrompt(false);
+        _showCompleteProfileBottomSheet();
+      }
     });
+  }
+
+  void _showCompleteProfileBottomSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.tealLight.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_pin_rounded,
+                  color: AppColors.teal,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Complete your profile to get personalized suggestions',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Tell us a bit about yourself so we can calculate your exact energy needs.',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const OnboardingFlow()),
+                    );
+                  },
+                  child: const Text('Set up now'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Later'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
