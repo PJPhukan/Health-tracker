@@ -229,3 +229,19 @@ Also still pending from v1/v2:
 - **v4 addition**: Firestore rules already cover `meal_templates` (it's just
   another subcollection under the existing `users/{uid}/{document=**}`
   match) — no rule redeploy needed for this release.
+
+## 12. Splash pre-load + loading skeletons (v4)
+
+The splash screen (`lib/screens/splash_screen.dart`) pre-loads auth
+resolution, the local profile bind, and today's health data in parallel with
+its ~2.3s logo animation, so `AuthGate`/`MainShell` render with real data on
+their very first frame instead of a spinner. It never blocks longer than 5s
+total — past that it navigates anyway and lets the destination screen show
+its own loading state.
+
+For the rare case something still isn't ready by navigation time, per-widget
+skeleton placeholders (`lib/widgets/skeletons.dart`, via the `shimmer`
+package) stand in instead of a full-screen spinner: Home's summary tiles +
+suggestion preview, Progress's chart cards, and History's day-card list.
+No setup needed — `flutter pub get` picks up the new `shimmer` dependency
+in `pubspec.yaml`.

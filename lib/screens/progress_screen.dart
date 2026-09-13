@@ -8,6 +8,7 @@ import '../providers/health_provider.dart';
 import '../services/streak_calculator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/skeletons.dart';
 
 /// A calm dashboard: two streak cards, then one chart per metric. Charts are
 /// deliberately non-interactive for v3.
@@ -48,8 +49,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
               future: _future,
               builder: (context, snap) {
                 if (!snap.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: AppColors.teal));
+                  return const SingleChildScrollView(
+                    physics: NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(AppSpacing.lg,
+                        AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
+                    child: ProgressChartsSkeleton(),
+                  );
                 }
                 final data = snap.data!;
                 return RefreshIndicator(

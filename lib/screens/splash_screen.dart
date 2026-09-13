@@ -1,5 +1,13 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../providers/auth_controller.dart';
+import '../providers/health_provider.dart';
+import '../providers/profile_controller.dart';
 import '../theme/app_theme.dart';
 import 'auth/auth_gate.dart';
 
@@ -50,19 +58,112 @@ class _SplashScreenState extends State<SplashScreen>
           [Curve curve = Curves.easeOut]) =>
       CurvedAnimation(parent: _c, curve: Interval(begin, end, curve: curve));
 
+  /// Absolute ceiling on how long the splash can hold the user, no matter how
+  /// slow the network/device is — after this, we navigate regardless and let
+  /// the destination screen show its own (already-existing) loading state.
+  static const _hardCap = Duration(seconds: 5);
+
+  bool _animationDone = false;
+  bool _preloadDone = false;
+  bool _navigated = false;
+  Timer? _hardCapTimer;
+
   @override
   void initState() {
     super.initState();
+    // The animation and the data pre-load race each other; whichever is
+    // slower decides when we actually navigate — see _maybeNavigate.
     _c.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted) _goHome();
+      if (status == AnimationStatus.completed) {
+        _animationDone = true;
+        _maybeNavigate();
+      }
     });
     _c.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _preload().then((_) {
+        _preloadDone = true;
+        _maybeNavigate();
+      });
+    });
+    _hardCapTimer = Timer(_hardCap, _maybeNavigate);
   }
 
   @override
   void dispose() {
+    _hardCapTimer?.cancel();
     _c.dispose();
     super.dispose();
+  }
+
+  /// Warms every provider the very first frame after the splash needs, in
+  /// parallel with the animation, so `AuthGate` and `MainShell` resolve
+  /// instantly instead of showing their own brief spinners right after we
+  /// hand off. Best-effort only — any failure here just means the
+  /// destination screen falls back to its own existing loading state, per
+  /// the "polish only, no functional change" constraint.
+  Future<void> _preload() async {
+    try {
+      final auth = context.read<AuthController>();
+      final profile = context.read<ProfileController>();
+      final health = context.read<HealthProvider>();
+
+      await Future.wait([
+        _waitForAuthResolved(auth)
+            .timeout(const Duration(seconds: 3), onTimeout: () {}),
+        health
+            .loadToday()
+            .timeout(const Duration(seconds: 3), onTimeout: () {}),
+        // Warms the shared_preferences platform channel so the
+        // pantry-onboarding gate's first check (further down the flow)
+        // resolves instantly instead of paying the first-call cost after
+        // navigation.
+        SharedPreferences.getInstance().timeout(const Duration(seconds: 3)),
+      ]);
+
+      if (auth.stage == AuthStage.localOnly ||
+          auth.stage == AuthStage.signedIn) {
+        await profile
+            .bind(auth.profileId)
+            .timeout(const Duration(seconds: 3), onTimeout: () {});
+        // Needs the goals `profile.bind` just loaded, and today's data
+        // loaded above. Fire-and-forget rather than awaited: it may hit the
+        // network (the Gemini call), and navigation must never wait on
+        // that — Home's existing preview card already handles "not ready
+        // yet" with a placeholder, exactly as it did before this screen
+        // called it early. HealthProvider swallows its own errors.
+        unawaited(health.initTodaySuggestion());
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Splash pre-load failed: $e');
+    }
+  }
+
+  /// Resolves once [AuthController] leaves `checking` (already resolved
+  /// instantly in local-only mode; waits for the first cached-session
+  /// callback otherwise).
+  Future<void> _waitForAuthResolved(AuthController auth) {
+    if (auth.stage != AuthStage.checking) return Future.value();
+    final completer = Completer<void>();
+    void listener() {
+      if (auth.stage != AuthStage.checking) {
+        auth.removeListener(listener);
+        if (!completer.isCompleted) completer.complete();
+      }
+    }
+
+    auth.addListener(listener);
+    return completer.future;
+  }
+
+  void _maybeNavigate() {
+    if (_navigated || !mounted) return;
+    final hardCapped = !(_hardCapTimer?.isActive ?? true);
+    if (hardCapped || (_animationDone && _preloadDone)) {
+      _navigated = true;
+      _goHome();
+    }
   }
 
   void _goHome() {

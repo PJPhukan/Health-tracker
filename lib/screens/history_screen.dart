@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/skeletons.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -68,8 +69,12 @@ class _HistoryScreenState extends State<HistoryScreen>
               future: _dates,
               builder: (context, snap) {
                 if (!snap.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: AppColors.teal));
+                  return const SingleChildScrollView(
+                    physics: NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(AppSpacing.lg,
+                        AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
+                    child: HistoryListSkeleton(),
+                  );
                 }
                 final dates = snap.data!;
                 if (dates.isEmpty) {
