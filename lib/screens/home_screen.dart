@@ -89,28 +89,31 @@ class _HomeScreenState extends State<HomeScreen>
     final goals = context.watch<ProfileController>().goals;
 
     return Scaffold(
-      floatingActionButton: _GlowFab(
-        key: widget.suggestionFabKey,
-        hasTodaySuggestion: provider.hasTodaySuggestion,
-        onPressed: () {
-          final guest = context.read<GuestService>();
-          if (!guest.canRequestSuggestion) {
-            showGuestSoftGate(context);
-            return;
-          }
-          if (guest.isGuest) {
-            guest.recordSuggestionUsed();
-          }
-          if (provider.hasTodaySuggestion) {
-            // Ad-gated on the free tier — see suggestion_screen.dart. Fired
-            // without waiting so navigation feels instant either way.
-            regenerateSuggestionFlow(context);
-          } else {
-            context.read<HealthProvider>().getSuggestion();
-          }
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SuggestionScreen()));
-        },
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: _GlowFab(
+          key: widget.suggestionFabKey,
+          hasTodaySuggestion: provider.hasTodaySuggestion,
+          onPressed: () {
+            final guest = context.read<GuestService>();
+            if (!guest.canRequestSuggestion) {
+              showGuestSoftGate(context);
+              return;
+            }
+            if (guest.isGuest) {
+              guest.recordSuggestionUsed();
+            }
+            if (provider.hasTodaySuggestion) {
+              // Ad-gated on the free tier — see suggestion_screen.dart. Fired
+              // without waiting so navigation feels instant either way.
+              regenerateSuggestionFlow(context);
+            } else {
+              context.read<HealthProvider>().getSuggestion();
+            }
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SuggestionScreen()));
+          },
+        ),
       ),
       body: Column(
         children: [
@@ -127,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen>
                 slivers: [
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
+                        AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 140),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         if (summary == null) ...[
