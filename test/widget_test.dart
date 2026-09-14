@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health_tracker/main.dart';
 import 'package:health_tracker/screens/quick_start/quick_start_flow.dart';
@@ -31,7 +32,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    // Completely new user lands on Screen 1: Quick Start
+    // Completely new user lands on DisclaimerScreen
+    expect(find.text('Before We Begin'), findsOneWidget);
+    expect(find.text('I understand — let\'s go →'), findsOneWidget);
+
+    // Acknowledge notice
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('I understand — let\'s go →'));
+    await tester.pumpAndSettle();
+
+    // Now lands on Screen 1: Quick Start
     expect(find.byType(QuickStartFlow), findsOneWidget);
     expect(find.text("What's in your kitchen right now?"), findsOneWidget);
     expect(find.text('Rice'), findsOneWidget);

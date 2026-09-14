@@ -45,6 +45,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     GuestService.instance.resetForTesting();
     await GuestService.instance.init();
+    await GuestService.instance.setHasSeenDisclaimer(true);
   });
 
   group('First-Run Quick Start Flow', () {

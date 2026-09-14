@@ -29,19 +29,20 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.xl,
             vertical: AppSpacing.lg,
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Spacer(),
+              const SizedBox(height: AppSpacing.md),
               // Centered App Logo
               Image.asset(
                 'assets/branding/logo.png',
-                width: 80,
-                height: 80,
+                width: 72,
+                height: 72,
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -61,7 +62,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg),
 
               // Disclaimer Card
               Container(
@@ -143,7 +144,7 @@ class _DisclaimerScreenState extends State<DisclaimerScreen> {
                   ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: AppSpacing.xl),
 
               // Proceed CTA button
               SizedBox(

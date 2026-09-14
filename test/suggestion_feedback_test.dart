@@ -7,6 +7,7 @@ import 'package:health_tracker/models/suggestion_feedback.dart';
 import 'package:health_tracker/models/user_profile.dart';
 import 'package:health_tracker/providers/health_provider.dart';
 import 'package:health_tracker/services/gemini_service.dart';
+import 'package:health_tracker/services/toast_center.dart';
 import 'package:health_tracker/widgets/suggestion_feedback_row.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -92,6 +93,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          scaffoldMessengerKey: ToastCenter.scaffoldMessengerKey,
           home: Scaffold(
             body: ChangeNotifierProvider<HealthProvider>.value(
               value: provider,
@@ -112,8 +114,9 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.thumb_up_alt_outlined));
       await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await tester.pumpAndSettle();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(positiveCallbackFired, isTrue);
       expect(find.text('Glad it helped!'), findsOneWidget);
@@ -125,6 +128,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          scaffoldMessengerKey: ToastCenter.scaffoldMessengerKey,
           home: Scaffold(
             body: ChangeNotifierProvider<HealthProvider>.value(
               value: provider,
@@ -153,9 +157,10 @@ void main() {
       // Tap send feedback
       await tester.tap(find.text('Send feedback'));
       await tester.pump();
-      await tester.pumpAndSettle(); // settles bottom sheet closing
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await tester.pumpAndSettle(); // animates snackbar
+      await tester.pumpAndSettle();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Thanks for the feedback!'), findsOneWidget);
     });
