@@ -50,7 +50,14 @@ class SuggestionCacheService {
     List<PantryItem> pantry,
     HealthGoals goals,
   ) async {
-    final result = await _ai.getSuggestion(summary, pantry, goals);
+    final missingCount =
+        await _repo.getNegativeFeedbackCountForReason('Missing ingredients');
+    final result = await _ai.getSuggestion(
+      summary,
+      pantry,
+      goals,
+      missingIngredientsWarning: missingCount > 2,
+    );
     final entry = SuggestionEntry(
       date: summary.date,
       prompt: result.prompt,

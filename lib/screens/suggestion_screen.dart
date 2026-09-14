@@ -5,10 +5,13 @@ import 'package:provider/provider.dart';
 import '../providers/health_provider.dart';
 import '../services/guest_service.dart';
 import '../services/subscription_service.dart';
+import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/common.dart';
 import '../widgets/guest_gate_dialog.dart';
+import '../widgets/suggestion_feedback_row.dart';
+import '../widgets/tts_speaker_button.dart';
 import 'restock_screen.dart';
 import 'subscription_screen.dart';
 import 'suggestion_history_screen.dart';
@@ -210,7 +213,14 @@ class _SuccessViewState extends State<_SuccessView>
   @override
   void dispose() {
     _entrance.dispose();
+    // A reading aid, not a music player — never keeps talking once this
+    // screen (or the suggestion it was reading) is gone.
+    TtsService.instance.stop();
     super.dispose();
+  }
+
+  void _checkRatingNudge(BuildContext context) {
+    // Handled in Stage 3 via RatingService
   }
 
   @override
@@ -243,22 +253,23 @@ class _SuccessViewState extends State<_SuccessView>
                     padding: const EdgeInsets.only(top: AppSpacing.md),
                     child: Column(
                       children: [
-                        if (todaySuggestion != null) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(
-                                bottom: AppSpacing.sm, left: 4),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Suggested at ${_formatTime(todaySuggestion.timestamp)}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(color: AppColors.textSecondary),
-                              ),
-                            ),
-                          ),
-                        ],
+                        SuggestionFeedbackRow(
+                          suggestionId: todaySuggestion?.id?.toString() ??
+                              todaySuggestion?.timestamp ??
+                              'today',
+                          leading: todaySuggestion != null
+                              ? Text(
+                                  'Suggested at ${_formatTime(todaySuggestion.timestamp)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: AppColors.textSecondary),
+                                )
+                              : null,
+                          onPositiveFeedback: () =>
+                              _checkRatingNudge(context),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
                         if (!isPremium) ...[
                           const BannerAdSlot(),
                           const SizedBox(height: AppSpacing.xs),
@@ -277,6 +288,20 @@ class _SuccessViewState extends State<_SuccessView>
               }
 
               final section = sections[index];
+              // The main suggestion speaker lives on the very first card and
+              // reads the whole thing, not just that card's text; the buy
+              // list gets its own, separate speaker — tapping one stops the
+              // other (see TtsService: only one utterance plays at a time).
+              Widget? speaker;
+              if (index == 0) {
+                speaker = TtsSpeakerButton(text: widget.text, tag: 'suggestion');
+              } else if (section.heading == 'Buy today' &&
+                  section.buyItems != null) {
+                speaker = TtsSpeakerButton(
+                  text: 'You need to buy: ${section.buyItems!.join(', ')}',
+                  tag: 'buylist',
+                );
+              }
               return StaggeredEntrance(
                 animation: _entrance,
                 index: index,
@@ -287,6 +312,7 @@ class _SuccessViewState extends State<_SuccessView>
                     section: section,
                     textTheme: t,
                     showAdFreeChip: !isPremium && index == sections.length - 1,
+                    speaker: speaker,
                   ),
                 ),
               );
@@ -303,6 +329,7 @@ class _SuggestionCard extends StatelessWidget {
     required this.section,
     required this.textTheme,
     this.showAdFreeChip = false,
+    this.speaker,
   });
   final _SuggestionSection section;
   final TextTheme textTheme;
@@ -310,6 +337,12 @@ class _SuggestionCard extends StatelessWidget {
   /// A small "go ad-free" hint tucked into the bottom-right corner of the
   /// last card — free tier only, a feature hint rather than an ad itself.
   final bool showAdFreeChip;
+
+  /// The "hear this aloud" speaker button, top-right of the card — either
+  /// the whole-suggestion reader (first card) or the buy-list reader (the
+  /// "Buy today" card). Null everywhere else, and hidden app-wide when the
+  /// user has turned text-to-speech off in Settings.
+  final Widget? speaker;
 
   @override
   Widget build(BuildContext context) {
@@ -349,8 +382,12 @@ class _SuggestionCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (speaker != null) speaker!,
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
+          ] else if (speaker != null) ...[
+            Align(alignment: Alignment.topRight, child: speaker!),
             const SizedBox(height: AppSpacing.sm),
           ],
           Text(
@@ -561,7 +598,9 @@ class _ErrorViewState extends State<_ErrorView>
                           ),
                           const SizedBox(height: AppSpacing.xl),
                           Text(
-                            'Couldn\u0027t get a suggestion',
+                            (widget.errorMessage?.contains('internet connection') == true)
+                                ? "You're currently offline"
+                                : 'Couldn\u0027t get a suggestion',
                             style: t.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),

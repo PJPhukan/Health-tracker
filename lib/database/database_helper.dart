@@ -11,7 +11,8 @@ class DatabaseHelper {
   // v5: sync columns (syncId / pendingSync / syncDeleted / syncUpdatedAt) on
   //     every table that mirrors to Firestore under users/{uid}/.
   // v6: meal_templates (recurring meals — see MealTemplate).
-  static const _dbVersion = 6;
+  // v7: suggestion_feedback (ratings, reasons, comments).
+  static const _dbVersion = 7;
 
   /// SQLite table -> Firestore collection under `users/{uid}/`.
   static const syncedCollections = <String, String>{
@@ -24,6 +25,7 @@ class DatabaseHelper {
     'meal_favorites': 'meal_favorites',
     'suggestion_history': 'suggestion_history',
     'meal_templates': 'meal_templates',
+    'suggestion_feedback': 'suggestion_feedback',
   };
 
   Database? _db;
@@ -62,6 +64,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 6) {
       await _createMealTemplatesTable(db);
+    }
+    if (oldVersion < 7) {
+      await _createSuggestionFeedbackTable(db);
     }
   }
 
@@ -235,5 +240,23 @@ $_syncColumns
     await _createUserProfileTable(db);
     await _createMealFavoritesTable(db);
     await _createMealTemplatesTable(db);
+    await _createSuggestionFeedbackTable(db);
+  }
+
+  Future<void> _createSuggestionFeedbackTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS suggestion_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        suggestionId TEXT NOT NULL,
+        rating TEXT NOT NULL,
+        reason TEXT,
+        comment TEXT,
+        timestamp TEXT NOT NULL,
+$_syncColumns
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_time '
+        'ON suggestion_feedback(timestamp)');
   }
 }

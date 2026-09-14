@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
+import '../models/suggestion_feedback.dart';
 import 'database_helper.dart';
 import 'sync_service.dart';
 
@@ -348,6 +349,44 @@ class HealthRepository {
   /// held in memory since before a midnight rollover being shown as "today's".
   bool isFromToday(SuggestionEntry entry) =>
       entry.date == dateKey(DateTime.now());
+
+  // ── Feedback ─────────────────────────────────────────────────────────────
+
+  Future<int> insertSuggestionFeedback(SuggestionFeedback feedback) =>
+      _insert('suggestion_feedback', feedback.toMap());
+
+  Future<List<SuggestionFeedback>> getSuggestionFeedback({int limit = 100}) async {
+    final rows = await (await _db).query('suggestion_feedback',
+        where: _live(), orderBy: 'timestamp DESC', limit: limit);
+    return rows.map(SuggestionFeedback.fromMap).toList();
+  }
+
+  Future<int> getNegativeFeedbackCountForReason(String reason) async {
+    final db = await _db;
+    final res = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM suggestion_feedback '
+      'WHERE ${_live("rating = 'negative' AND reason = ?")}',
+      [reason],
+    );
+    if (res.isEmpty) return 0;
+    return Sqflite.firstIntValue(res) ?? 0;
+  }
+
+  Future<int> countTotalMeals() async {
+    final db = await _db;
+    final res = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM meal_entries WHERE ${_live()}',
+    );
+    return Sqflite.firstIntValue(res) ?? 0;
+  }
+
+  Future<int> countTotalSuggestions() async {
+    final db = await _db;
+    final res = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM suggestion_history WHERE ${_live()}',
+    );
+    return Sqflite.firstIntValue(res) ?? 0;
+  }
 
   // ── Aggregates ───────────────────────────────────────────────────────────
 

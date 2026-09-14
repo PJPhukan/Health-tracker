@@ -8,6 +8,8 @@ import '../database/sync_service.dart';
 import '../models/models.dart';
 import '../models/user_profile.dart';
 import '../screens/pantry_screen.dart';
+import '../services/connectivity_service.dart';
+import '../services/feedback_service.dart';
 import '../services/gemini_service.dart';
 import '../services/health_steps_service.dart';
 import '../services/notification_service.dart';
@@ -37,6 +39,23 @@ class HealthProvider extends ChangeNotifier {
   final HealthStepsService _healthSteps;
   final SyncService? _sync;
   late final SuggestionCacheService _cache;
+  late final FeedbackService _feedbackService = FeedbackService(repo: _repo);
+
+  HealthRepository get repo => _repo;
+  FeedbackService get feedbackService => _feedbackService;
+
+  Future<void> recordSuggestionFeedback({
+    required String suggestionId,
+    required String rating,
+    String? reason,
+    String? comment,
+  }) =>
+      _feedbackService.recordFeedback(
+        suggestionId: suggestionId,
+        rating: rating,
+        reason: reason,
+        comment: comment,
+      );
 
   /// Pull the cloud copy down, flush pending local writes, then refresh the UI.
   /// Called on login and on every app resume; a no-op in local-only mode.
@@ -631,6 +650,14 @@ class HealthProvider extends ChangeNotifier {
   Future<void> regenerateSuggestion() => _generateAndCache();
 
   Future<void> _generateAndCache() async {
+    if (ConnectivityService.instance.isOffline) {
+      _suggestionStatus = SuggestionStatus.error;
+      _suggestionError =
+          "You need an internet connection to get suggestions. Your logged data is saved and ready for when you're back online.";
+      notifyListeners();
+      return;
+    }
+
     _suggestionStatus = SuggestionStatus.loading;
     _suggestionError = null;
     notifyListeners();
@@ -644,8 +671,17 @@ class HealthProvider extends ChangeNotifier {
       _suggestionStatus = SuggestionStatus.success;
     } catch (e) {
       _suggestionStatus = SuggestionStatus.error;
-      _suggestionError =
-          e is AiException ? e.message : "Couldn't get suggestion, try again.";
+      if (ConnectivityService.instance.isOffline ||
+          e.toString().toLowerCase().contains('socket') ||
+          e.toString().toLowerCase().contains('network') ||
+          e.toString().toLowerCase().contains('failed host lookup') ||
+          e.toString().toLowerCase().contains('connection')) {
+        _suggestionError =
+            "You need an internet connection to get suggestions. Your logged data is saved and ready for when you're back online.";
+      } else {
+        _suggestionError =
+            e is AiException ? e.message : "Couldn't get suggestion, try again.";
+      }
       if (kDebugMode) debugPrint('generate suggestion failed: $e');
     }
     notifyListeners();

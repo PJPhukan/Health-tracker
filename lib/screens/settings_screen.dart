@@ -7,6 +7,7 @@ import '../providers/health_provider.dart';
 import '../providers/profile_controller.dart';
 import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
+import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'meal_routine_screen.dart';
@@ -111,6 +112,10 @@ class SettingsScreen extends StatelessWidget {
                 const MetaLabel('Reminders'),
                 const SizedBox(height: AppSpacing.xs),
                 const _RemindersCard(),
+                const SizedBox(height: AppSpacing.lg),
+                const MetaLabel('Accessibility'),
+                const SizedBox(height: AppSpacing.xs),
+                const _AccessibilityCard(),
                 const SizedBox(height: AppSpacing.lg),
                 const MetaLabel('Pantry'),
                 const SizedBox(height: AppSpacing.xs),
@@ -346,6 +351,42 @@ class _SubscriptionCard extends StatelessWidget {
                 color: AppColors.teal, fontWeight: FontWeight.w700),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AccessibilityCard extends StatelessWidget {
+  const _AccessibilityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SoftCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: TtsService.instance.enabled,
+        builder: (context, enabled, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Text-to-speech', style: t.titleMedium),
+                ),
+                Switch(
+                  value: enabled,
+                  onChanged: TtsService.instance.setEnabled,
+                ),
+              ],
+            ),
+            Text(
+              'Hear suggestion cards and buy lists read aloud — handy while '
+              'cooking or at the shop. Turn off to hide the speaker buttons.',
+              style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }

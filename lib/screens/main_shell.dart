@@ -7,6 +7,7 @@ import '../providers/health_provider.dart';
 import '../services/guest_service.dart';
 import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
+import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
@@ -15,6 +16,7 @@ import 'onboarding/onboarding_flow.dart';
 import 'pantry_screen.dart';
 import 'progress_screen.dart';
 import 'suggestion_screen.dart';
+import '../widgets/offline_banner.dart';
 
 /// Root scaffold: Home / Log / History behind a premium bottom nav.
 class MainShell extends StatefulWidget {
@@ -192,6 +194,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       health.refreshReminders();
       context.read<SubscriptionService>().refresh();
       _armMidnightTimer();
+    } else {
+      // Minimizing mid-playback shouldn't keep talking in the background —
+      // this is a reading aid, not a music player.
+      TtsService.instance.stop();
     }
   }
 
@@ -203,14 +209,21 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: AppAnimations.shortDuration,
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: KeyedSubtree(
-          key: ValueKey(_index),
-          child: _pages[_index],
-        ),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: AppAnimations.shortDuration,
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: KeyedSubtree(
+                key: ValueKey(_index),
+                child: _pages[_index],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

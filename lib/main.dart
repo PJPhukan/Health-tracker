@@ -10,6 +10,7 @@ import 'providers/health_provider.dart';
 import 'providers/profile_controller.dart';
 import 'screens/splash_screen.dart';
 import 'services/ad_service.dart';
+import 'services/connectivity_service.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/guest_service.dart';
 import 'services/notification_service.dart';
@@ -42,6 +43,7 @@ class HealthTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ProfileController()),
         ChangeNotifierProvider.value(value: GuestService.instance),
+        ChangeNotifierProvider.value(value: ConnectivityService.instance),
         // Owns the SQLite <-> Firestore sync; bound to the signed-in uid below.
         Provider(create: (_) => SyncService()),
         // RevenueCat — identifies to the signed-in account so entitlements

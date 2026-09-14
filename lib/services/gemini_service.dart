@@ -46,7 +46,8 @@ class GeminiService {
   bool get hasKey => _geminiKey.isNotEmpty;
 
   String buildPrompt(
-      DailySummary s, List<PantryItem> pantry, HealthGoals goals) {
+      DailySummary s, List<PantryItem> pantry, HealthGoals goals,
+      {bool missingIngredientsWarning = false}) {
     final stock = pantry.isEmpty
         ? 'nothing recorded'
         : pantry.map((p) {
@@ -69,6 +70,10 @@ class GeminiService {
         : '${s.sleepHours.toStringAsFixed(1)} hours';
     final steps = s.steps == null ? 'not logged' : '${s.stepCount} steps';
 
+    final feedbackRule = missingIngredientsWarning
+        ? '\nPreviously the user said suggestions had missing ingredients — make sure every item is in their pantry list.\n'
+        : '';
+
     return '''
 Here's what I have in stock: $stock.
 
@@ -79,7 +84,7 @@ Here's what I ate/did today:
 - Steps: $steps
 
 My goal is: ${goals.promptText}
-
+$feedbackRule
 Based on what I have in stock, suggest what I should eat next (specify meal:
 breakfast/lunch/dinner). Include approximate calories and protein and one sentence
 of reasoning.
@@ -94,9 +99,11 @@ available. Keep it under 130 words.
   Future<SuggestionResult> getSuggestion(
     DailySummary summary,
     List<PantryItem> pantry,
-    HealthGoals goals,
-  ) async {
-    final prompt = buildPrompt(summary, pantry, goals);
+    HealthGoals goals, {
+    bool missingIngredientsWarning = false,
+  }) async {
+    final prompt = buildPrompt(summary, pantry, goals,
+        missingIngredientsWarning: missingIngredientsWarning);
     if (!hasKey) {
       throw AiException(
           'No API key configured. Pass --dart-define=GEMINI_API_KEY=… when running.');
