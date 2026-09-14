@@ -18,6 +18,7 @@ import 'pantry_screen.dart';
 import 'progress_screen.dart';
 import 'suggestion_screen.dart';
 import '../widgets/floating_nav_bar.dart';
+import '../widgets/guest_gate_dialog.dart';
 import '../widgets/offline_banner.dart';
 
 /// Root scaffold: Home / Log / History behind a premium bottom nav.
@@ -231,6 +232,25 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (i == 0) context.read<HealthProvider>().loadToday();
   }
 
+  void _handleSuggestionTap() {
+    final guest = context.read<GuestService>();
+    if (!guest.canRequestSuggestion) {
+      showGuestSoftGate(context);
+      return;
+    }
+    if (guest.isGuest) {
+      guest.recordSuggestionUsed();
+    }
+    final health = context.read<HealthProvider>();
+    if (health.hasTodaySuggestion) {
+      regenerateSuggestionFlow(context);
+    } else {
+      health.getSuggestion();
+    }
+    Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SuggestionScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final lowPantryCount = context.select<HealthProvider, int>(
@@ -240,6 +260,17 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
     return Scaffold(
       extendBody: true,
+      floatingActionButton: _index == 0
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GlowFab(
+                key: _suggestionFabKey,
+                hasTodaySuggestion:
+                    context.watch<HealthProvider>().hasTodaySuggestion,
+                onPressed: _handleSuggestionTap,
+              ),
+            )
+          : null,
       body: Column(
         children: [
           const OfflineBanner(),

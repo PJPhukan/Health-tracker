@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
+import '../providers/health_provider.dart';
+import '../screens/suggestion_screen.dart';
+import '../services/guest_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/guest_gate_dialog.dart';
 
 class TutorialService {
   TutorialService._();
@@ -129,7 +134,11 @@ class TutorialService {
       opacityShadow: 0.85,
       hideSkip: true, // We have a dedicated Skip button in our custom card
       onClickTarget: (target) {
-        if (target.identify == "step_suggestion" || target.identify == "step_progress") {
+        if (target.identify == "step_suggestion") {
+          markTutorialSeen();
+          tutorial.finish();
+          _onSuggestionTapped(context);
+        } else if (target.identify == "step_progress") {
           markTutorialSeen();
           tutorial.finish();
         } else {
@@ -147,6 +156,27 @@ class TutorialService {
     );
 
     tutorial.show(context: context);
+  }
+
+  static void _onSuggestionTapped(BuildContext context) {
+    if (!context.mounted) return;
+    final guest = context.read<GuestService>();
+    if (!guest.canRequestSuggestion) {
+      showGuestSoftGate(context);
+      return;
+    }
+    if (guest.isGuest) {
+      guest.recordSuggestionUsed();
+    }
+    final health = context.read<HealthProvider>();
+    if (health.hasTodaySuggestion) {
+      regenerateSuggestionFlow(context);
+    } else {
+      health.getSuggestion();
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SuggestionScreen()),
+    );
   }
 }
 

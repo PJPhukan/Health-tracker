@@ -24,7 +24,8 @@ import 'subscription_screen.dart';
 import 'suggestion_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.suggestionFabKey});
+  const HomeScreen({super.key, this.showFab = false, this.suggestionFabKey});
+  final bool showFab;
   final GlobalKey? suggestionFabKey;
 
   @override
@@ -89,32 +90,34 @@ class _HomeScreenState extends State<HomeScreen>
     final goals = context.watch<ProfileController>().goals;
 
     return Scaffold(
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80),
-        child: _GlowFab(
-          key: widget.suggestionFabKey,
-          hasTodaySuggestion: provider.hasTodaySuggestion,
-          onPressed: () {
-            final guest = context.read<GuestService>();
-            if (!guest.canRequestSuggestion) {
-              showGuestSoftGate(context);
-              return;
-            }
-            if (guest.isGuest) {
-              guest.recordSuggestionUsed();
-            }
-            if (provider.hasTodaySuggestion) {
-              // Ad-gated on the free tier — see suggestion_screen.dart. Fired
-              // without waiting so navigation feels instant either way.
-              regenerateSuggestionFlow(context);
-            } else {
-              context.read<HealthProvider>().getSuggestion();
-            }
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SuggestionScreen()));
-          },
-        ),
-      ),
+      floatingActionButton: widget.showFab
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 80),
+              child: GlowFab(
+                key: widget.suggestionFabKey,
+                hasTodaySuggestion: provider.hasTodaySuggestion,
+                onPressed: () {
+                  final guest = context.read<GuestService>();
+                  if (!guest.canRequestSuggestion) {
+                    showGuestSoftGate(context);
+                    return;
+                  }
+                  if (guest.isGuest) {
+                    guest.recordSuggestionUsed();
+                  }
+                  if (provider.hasTodaySuggestion) {
+                    // Ad-gated on the free tier — see suggestion_screen.dart. Fired
+                    // without waiting so navigation feels instant either way.
+                    regenerateSuggestionFlow(context);
+                  } else {
+                    context.read<HealthProvider>().getSuggestion();
+                  }
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SuggestionScreen()));
+                },
+              ),
+            )
+          : null,
       body: Column(
         children: [
           const _GuestModeBanner(),
@@ -387,8 +390,8 @@ class _PremiumUpsellBannerState extends State<_PremiumUpsellBanner> {
 
 // ─── GLOW FAB ───────────────────────────────────────────────────────────────
 
-class _GlowFab extends StatelessWidget {
-  const _GlowFab({super.key, required this.onPressed, required this.hasTodaySuggestion});
+class GlowFab extends StatelessWidget {
+  const GlowFab({super.key, required this.onPressed, required this.hasTodaySuggestion});
   final VoidCallback onPressed;
 
   /// Once today's suggestion exists, the FAB relabels to make clear a tap
