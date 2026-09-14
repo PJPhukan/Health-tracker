@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'onboarding/pantry_onboarding_screen.dart';
 import 'restock_screen.dart';
 
 class PantryScreen extends StatefulWidget {
@@ -131,11 +132,22 @@ class _PantryScreenState extends State<PantryScreen>
           ),
           Expanded(
             child: items.isEmpty
-                ? const EmptyState(
+                ? EmptyState(
                     icon: Icons.kitchen_rounded,
                     title: 'Your pantry is empty',
                     message:
-                        'Add what you have at home so suggestions use\nwhat you can actually cook.',
+                        "Add what's in your kitchen to get better suggestions.",
+                    buttonText: 'Set up pantry',
+                    onButtonPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const PantryOnboardingScreen(),
+                        ),
+                      );
+                      if (context.mounted) {
+                        context.read<HealthProvider>().loadPantry();
+                      }
+                    },
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(

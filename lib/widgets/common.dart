@@ -60,11 +60,15 @@ class EmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
+    this.buttonText,
+    this.onButtonPressed,
   });
 
   final IconData icon;
   final String title;
   final String message;
+  final String? buttonText;
+  final VoidCallback? onButtonPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +96,22 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
+            if (buttonText != null && onButtonPressed != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: onButtonPressed,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                ),
+                child: Text(buttonText!),
+              ),
+            ],
           ],
         ),
       ),

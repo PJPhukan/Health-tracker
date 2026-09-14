@@ -66,15 +66,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
                         AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
                     children: [
                       _StreakRow(data: data),
-                      if (data.isEmpty)
+                      if (!data.hasEnoughDataForCharts)
                         const Padding(
                           padding: EdgeInsets.only(top: AppSpacing.xl),
                           child: EmptyState(
                             icon: Icons.show_chart_rounded,
                             title: 'No trends yet',
                             message:
-                                'Log a few days of meals, steps, sleep or\n'
-                                'weight and your charts will show up here.',
+                                'Keep logging daily — your progress charts will appear here after 3 days of data.',
                           ),
                         )
                       else ...[

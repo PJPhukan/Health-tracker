@@ -744,6 +744,16 @@ class ProgressData {
       steps.isEmpty &&
       sleep.isEmpty &&
       mealCountsByDay.isEmpty;
+
+  bool get hasEnoughDataForCharts {
+    final distinctDays = <String>{
+      ...weight.map((e) => e.date),
+      ...steps.map((e) => e.date),
+      ...sleep.map((e) => e.date),
+      ...mealCountsByDay.keys,
+    };
+    return distinctDays.length >= 3;
+  }
 }
 
 /// A pending "save this as a routine?" prompt — see

@@ -7,6 +7,7 @@ import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/skeletons.dart';
+import 'log_entry_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -78,11 +79,22 @@ class _HistoryScreenState extends State<HistoryScreen>
                 }
                 final dates = snap.data!;
                 if (dates.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.auto_stories_rounded,
+                  return EmptyState(
+                    icon: Icons.restaurant_outlined,
                     title: 'Nothing logged yet',
                     message:
-                        'Your logged days will show up here.\nStart by adding a meal or a walk.',
+                        'Start by logging your first meal to build your activity history.',
+                    buttonText: 'Log a meal',
+                    onButtonPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const LogEntryScreen(),
+                        ),
+                      );
+                      if (mounted) {
+                        _refreshHistory();
+                      }
+                    },
                   );
                 }
                 return ListView.separated(
