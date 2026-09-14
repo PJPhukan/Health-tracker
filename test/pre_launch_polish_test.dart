@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health_tracker/constants/app_strings.dart';
 import 'package:health_tracker/services/guest_service.dart';
@@ -29,6 +30,61 @@ void main() {
       await TutorialService.instance.resetForTesting();
       final seen = await TutorialService.instance.hasSeenTutorial();
       expect(seen, isFalse);
+    });
+
+    testWidgets('TutorialCard: when onBack is null, no Back button rendered', (tester) async {
+      var nextCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TutorialCard(
+              title: "Step 1",
+              message: "Description",
+              stepLabel: "1 of 4",
+              isLast: false,
+              onNext: () => nextCalled = true,
+              onSkip: () {},
+              onBack: null,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text("Back"), findsNothing);
+      expect(find.text("Skip"), findsOneWidget);
+      expect(find.text("Got it \u2192"), findsOneWidget);
+
+      await tester.tap(find.text("Got it \u2192"));
+      expect(nextCalled, isTrue);
+    });
+
+    testWidgets('TutorialCard: when onBack is provided, Back button is rendered and clickable', (tester) async {
+      var backCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TutorialCard(
+              title: "Step 2",
+              message: "Pantry description",
+              stepLabel: "2 of 4",
+              isLast: false,
+              onNext: () {},
+              onSkip: () {},
+              onBack: () => backCalled = true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text("Back"), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+      expect(find.text("Skip"), findsOneWidget);
+      expect(find.text("Got it \u2192"), findsOneWidget);
+
+      await tester.tap(find.text("Back"));
+      expect(backCalled, isTrue);
     });
   });
 

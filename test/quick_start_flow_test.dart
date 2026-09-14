@@ -238,6 +238,39 @@ void main() {
       expect(find.text('Sign up free →'), findsOneWidget);
     });
 
+    testWidgets('Screen 3: Back button navigates back to Screen 2 goal selection',
+        (tester) async {
+      await tester.pumpWidget(createTestApp(guest: GuestService.instance));
+      await tester.pumpAndSettle();
+
+      // Screen 1 -> Screen 2
+      await tester.tap(find.text('Eggs'));
+      await tester.tap(find.text('Bread'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Next →'));
+      await tester.pumpAndSettle();
+
+      // Screen 2 -> Screen 3
+      expect(find.text("What's your main goal?"), findsOneWidget);
+      await tester.tap(find.text('Build muscle'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      // We are on Screen 3
+      expect(find.text('Instant Kitchen Match'), findsOneWidget);
+
+      // Tap back button
+      final backButton = find.byIcon(Icons.arrow_back_rounded);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      // We are back on Screen 2!
+      expect(find.text("What's your main goal?"), findsOneWidget);
+      expect(find.text('Build muscle'), findsOneWidget);
+    });
+
     testWidgets('Returning user: skips Quick Start flow entirely',
         (tester) async {
       // Mark as returning user

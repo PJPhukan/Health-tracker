@@ -619,7 +619,21 @@ class _QuickStartFlowState extends State<QuickStartFlow> {
 
     return Column(
       children: [
-        const SizedBox(height: AppSpacing.md),
+        // Back navigation
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: AppSpacing.sm, top: AppSpacing.xs),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => _pageController.animateToPage(
+                1,
+                duration: AppAnimations.shortDuration,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+          ),
+        ),
         Center(
           child: Image.asset(
             'assets/branding/logo.png',

@@ -52,7 +52,7 @@ class TutorialService {
         contents: [
           TargetContent(
             align: ContentAlign.top,
-            builder: (context, controller) => _TutorialCard(
+            builder: (context, controller) => TutorialCard(
               title: "Get Suggestion",
               message: "Tap here to get a meal suggestion based on your pantry and goal",
               stepLabel: "1 of 4",
@@ -72,13 +72,14 @@ class TutorialService {
         contents: [
           TargetContent(
             align: ContentAlign.top,
-            builder: (context, controller) => _TutorialCard(
+            builder: (context, controller) => TutorialCard(
               title: "Pantry",
               message: "Keep your pantry updated for accurate suggestions",
               stepLabel: "2 of 4",
               isLast: false,
               onNext: () => controller.next(),
               onSkip: () => controller.skip(),
+              onBack: () => controller.previous(),
             ),
           ),
         ],
@@ -92,13 +93,14 @@ class TutorialService {
         contents: [
           TargetContent(
             align: ContentAlign.top,
-            builder: (context, controller) => _TutorialCard(
+            builder: (context, controller) => TutorialCard(
               title: "Log Entry",
               message: "Log meals, workouts, sleep and steps to track your progress",
               stepLabel: "3 of 4",
               isLast: false,
               onNext: () => controller.next(),
               onSkip: () => controller.skip(),
+              onBack: () => controller.previous(),
             ),
           ),
         ],
@@ -112,13 +114,14 @@ class TutorialService {
         contents: [
           TargetContent(
             align: ContentAlign.top,
-            builder: (context, controller) => _TutorialCard(
+            builder: (context, controller) => TutorialCard(
               title: "Progress",
               message: "Watch your streaks and charts build up over time",
               stepLabel: "4 of 4",
               isLast: true,
               onNext: () => controller.next(),
               onSkip: () => controller.skip(),
+              onBack: () => controller.previous(),
             ),
           ),
         ],
@@ -180,14 +183,16 @@ class TutorialService {
   }
 }
 
-class _TutorialCard extends StatelessWidget {
-  const _TutorialCard({
+@visibleForTesting
+class TutorialCard extends StatelessWidget {
+  const TutorialCard({
     required this.title,
     required this.message,
     required this.stepLabel,
     required this.isLast,
     required this.onNext,
     required this.onSkip,
+    this.onBack,
   });
 
   final String title;
@@ -196,6 +201,7 @@ class _TutorialCard extends StatelessWidget {
   final bool isLast;
   final VoidCallback onNext;
   final VoidCallback onSkip;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -258,25 +264,52 @@ class _TutorialCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TextButton(
-                onPressed: onSkip,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                child: const Text("Skip"),
-              ),
-              FilledButton(
-                onPressed: onNext,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              if (onBack != null)
+                TextButton.icon(
+                  onPressed: onBack,
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text("Back"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   ),
+                )
+              else
+                TextButton(
+                  onPressed: onSkip,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: const Text("Skip"),
                 ),
-                child: Text(isLast ? "Got it!" : "Got it \u2192"),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onBack != null) ...[
+                    TextButton(
+                      onPressed: onSkip,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      ),
+                      child: const Text("Skip"),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  FilledButton(
+                    onPressed: onNext,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(isLast ? "Got it!" : "Got it \u2192"),
+                  ),
+                ],
               ),
             ],
           ),
