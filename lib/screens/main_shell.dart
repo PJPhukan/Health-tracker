@@ -17,6 +17,7 @@ import 'onboarding/onboarding_flow.dart';
 import 'pantry_screen.dart';
 import 'progress_screen.dart';
 import 'suggestion_screen.dart';
+import '../widgets/floating_nav_bar.dart';
 import '../widgets/offline_banner.dart';
 
 /// Root scaffold: Home / Log / History behind a premium bottom nav.
@@ -238,6 +239,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final hasLowPantry = lowPantryCount >= 3;
 
     return Scaffold(
+      extendBody: true,
       body: Column(
         children: [
           const OfflineBanner(),
@@ -254,67 +256,41 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: _onNav,
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: KeyedSubtree(
-                key: _logNavKey,
-                child: const Icon(Icons.add_circle_outline_rounded),
-              ),
-              selectedIcon: const Icon(Icons.add_circle_rounded),
-              label: 'Log',
-            ),
-            NavigationDestination(
-              icon: KeyedSubtree(
-                key: _progressNavKey,
-                child: const Icon(Icons.insights_outlined),
-              ),
-              selectedIcon: const Icon(Icons.insights_rounded),
-              label: 'Progress',
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: hasLowPantry,
-                backgroundColor: AppColors.behind,
-                smallSize: 8,
-                child: KeyedSubtree(
-                  key: _pantryNavKey,
-                  child: const Icon(Icons.kitchen_outlined),
-                ),
-              ),
-              selectedIcon: Badge(
-                isLabelVisible: hasLowPantry,
-                backgroundColor: AppColors.behind,
-                smallSize: 8,
-                child: const Icon(Icons.kitchen_rounded),
-              ),
-              label: 'Pantry',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_today_outlined),
-              selectedIcon: Icon(Icons.calendar_today_rounded),
-              label: 'History',
-            ),
-          ],
-        ),
+      bottomNavigationBar: FloatingNavBar(
+        currentIndex: _index,
+        onTap: _onNav,
+        items: [
+          const FloatingNavItem(
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home_rounded,
+            label: 'Home',
+          ),
+          FloatingNavItem(
+            key: _logNavKey,
+            icon: Icons.add_circle_outline_rounded,
+            selectedIcon: Icons.add_circle_rounded,
+            label: 'Log',
+          ),
+          FloatingNavItem(
+            key: _progressNavKey,
+            icon: Icons.insights_outlined,
+            selectedIcon: Icons.insights_rounded,
+            label: 'Progress',
+          ),
+          FloatingNavItem(
+            key: _pantryNavKey,
+            icon: Icons.kitchen_outlined,
+            selectedIcon: Icons.kitchen_rounded,
+            label: 'Pantry',
+            showBadge: hasLowPantry,
+            badgeColor: AppColors.behind,
+          ),
+          const FloatingNavItem(
+            icon: Icons.calendar_today_outlined,
+            selectedIcon: Icons.calendar_today_rounded,
+            label: 'History',
+          ),
+        ],
       ),
     );
   }
