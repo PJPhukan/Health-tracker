@@ -6,6 +6,7 @@ import '../../providers/profile_controller.dart';
 import '../../services/guest_service.dart';
 import '../../theme/app_theme.dart';
 import '../main_shell.dart';
+import '../onboarding/disclaimer_screen.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/pantry_onboarding_gate.dart';
 import '../quick_start/quick_start_flow.dart';
@@ -61,6 +62,11 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final guest = context.watch<GuestService>();
+
+    // 0. Disclaimer for completely new users
+    if (!guest.hasSeenDisclaimer && auth.user == null && !guest.isGuest) {
+      return const DisclaimerScreen();
+    }
 
     // 1. First-run experience for completely new users
     if (!guest.hasSeenQuickStart && auth.user == null && !guest.isGuest) {

@@ -9,12 +9,16 @@ class GuestService extends ChangeNotifier {
   static final GuestService instance = GuestService._();
 
   static const _keyHasSeenQuickStart = 'has_seen_quick_start';
+  static const _keyHasSeenDisclaimer = 'has_seen_disclaimer';
   static const _keyIsGuest = 'is_guest_session';
   static const _keyGuestSuggestions = 'guest_suggestions_count';
   static const _keyPendingProfilePrompt = 'pending_profile_prompt';
 
   bool _initialized = false;
   bool get isInitialized => _initialized;
+
+  bool _hasSeenDisclaimer = false;
+  bool get hasSeenDisclaimer => _hasSeenDisclaimer;
 
   bool _hasSeenQuickStart = false;
   bool get hasSeenQuickStart => _hasSeenQuickStart;
@@ -41,6 +45,7 @@ class GuestService extends ChangeNotifier {
   Future<void> init() async {
     if (_initialized) return;
     final prefs = await SharedPreferences.getInstance();
+    _hasSeenDisclaimer = prefs.getBool(_keyHasSeenDisclaimer) ?? false;
     _hasSeenQuickStart = prefs.getBool(_keyHasSeenQuickStart) ?? false;
     _isGuest = prefs.getBool(_keyIsGuest) ?? false;
     _guestSuggestionsCount = prefs.getInt(_keyGuestSuggestions) ?? 0;
@@ -52,6 +57,7 @@ class GuestService extends ChangeNotifier {
   @visibleForTesting
   void resetForTesting() {
     _initialized = false;
+    _hasSeenDisclaimer = false;
     _hasSeenQuickStart = false;
     _isGuest = false;
     _guestSuggestionsCount = 0;
@@ -59,6 +65,13 @@ class GuestService extends ChangeNotifier {
     _quickStartIngredients = [];
     _quickStartGoal = null;
     _quickStartSuggestion = null;
+  }
+
+  Future<void> setHasSeenDisclaimer(bool val) async {
+    _hasSeenDisclaimer = val;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHasSeenDisclaimer, val);
+    notifyListeners();
   }
 
   void cacheQuickStartData({

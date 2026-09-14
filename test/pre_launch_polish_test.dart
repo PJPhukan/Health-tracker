@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:health_tracker/constants/app_strings.dart';
+import 'package:health_tracker/services/guest_service.dart';
 import 'package:health_tracker/services/streak_milestone_service.dart';
 import 'package:health_tracker/services/tutorial_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -75,6 +76,27 @@ void main() {
       expect(AppStrings.disclaimerMedicalNotice, isNotEmpty);
       expect(AppStrings.privacyPolicyUrl, startsWith('https://'));
       expect(AppStrings.termsOfServiceUrl, startsWith('https://'));
+    });
+  });
+
+  group('DisclaimerService / GuestService disclaimer flag', () {
+    test('initially hasSeenDisclaimer is false', () async {
+      final guest = GuestService.instance;
+      guest.resetForTesting();
+      await guest.init();
+      expect(guest.hasSeenDisclaimer, isFalse);
+    });
+
+    test('setHasSeenDisclaimer updates flag and persists', () async {
+      final guest = GuestService.instance;
+      guest.resetForTesting();
+      await guest.init();
+      await guest.setHasSeenDisclaimer(true);
+      expect(guest.hasSeenDisclaimer, isTrue);
+
+      guest.resetForTesting();
+      await guest.init();
+      expect(guest.hasSeenDisclaimer, isTrue);
     });
   });
 }

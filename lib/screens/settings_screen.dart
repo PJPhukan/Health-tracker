@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/app_strings.dart';
 import '../models/user_profile.dart';
 import '../providers/auth_controller.dart';
 import '../providers/health_provider.dart';
@@ -146,11 +149,17 @@ class SettingsScreen extends StatelessWidget {
                     label: const Text('Sign out'),
                   ),
                 const SizedBox(height: AppSpacing.lg),
+                const MetaLabel('Legal & About'),
+                const SizedBox(height: AppSpacing.xs),
+                const _LegalCard(),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   'Health logs are stored on this device. Cloud sync for meals, '
                   'workouts and pantry is planned for a later release.',
                   style: t.bodyMedium?.copyWith(color: AppColors.textSecondary),
                 ),
+                const SizedBox(height: AppSpacing.lg),
+                const Center(child: _AppVersionText()),
               ],
             ),
           ),
@@ -547,3 +556,85 @@ class _TimeRow extends StatelessWidget {
     );
   }
 }
+
+class _LegalCard extends StatelessWidget {
+  const _LegalCard();
+
+  Future<void> _launch(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SoftCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const IconBadge(
+              icon: Icons.privacy_tip_outlined,
+              size: 32,
+              iconSize: 16,
+            ),
+            title: Text('Privacy Policy', style: t.bodyMedium),
+            trailing: const Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+            onTap: () => _launch(AppStrings.privacyPolicyUrl),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const IconBadge(
+              icon: Icons.description_outlined,
+              size: 32,
+              iconSize: 16,
+            ),
+            title: Text('Terms of Service', style: t.bodyMedium),
+            trailing: const Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+            onTap: () => _launch(AppStrings.termsOfServiceUrl),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppVersionText extends StatelessWidget {
+  const _AppVersionText();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snap) {
+        final version = snap.data?.version ?? '1.0.0';
+        final build = snap.data?.buildNumber ?? '1';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+          child: Text(
+            '${AppStrings.appName} v$version (build $build)',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+          ),
+        );
+      },
+    );
+  }
+}
+

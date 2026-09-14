@@ -277,3 +277,16 @@ button app-wide.
   plugin that wasn't part of this pass. The "isn't available on this
   device" snackbar covers the engine-missing case; a true silent-mode
   warning would need a follow-up with e.g. a volume-detection plugin.
+
+## 14. Pre-Launch Polish & Legal (v4)
+
+- **Privacy Policy & Terms of Service URLs**:
+  Configured in `lib/constants/app_strings.dart` (`privacyPolicyUrl` and `termsOfServiceUrl`).
+  Update these URLs to point to your live hosted documents (e.g., `https://stockplate.app/privacy` and `https://stockplate.app/terms`) before publishing to Google Play or Apple App Store.
+- **Dynamic App Version (`package_info_plus`)**:
+  Settings dynamically reads and displays the current app version and build number (`Stock Plate v1.0.0 (build 1)`). To bump versions for release, update `version: x.y.z+build` in `pubspec.yaml`.
+- **Onboarding Tutorial Overlay (`tutorial_coach_mark`)**:
+  Guides new users through the primary flow on the first run of `MainShell`. Acknowledgment/skip state is persisted in `SharedPreferences` (`has_seen_tutorial`), ensuring returning users are never re-prompted.
+- **Health & Nutrition Disclaimer**:
+  First-launch disclaimer requires acknowledgment before Quick Start. Flag is saved in `SharedPreferences` (`has_seen_disclaimer`).
+
