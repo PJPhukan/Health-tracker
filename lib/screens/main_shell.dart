@@ -8,6 +8,7 @@ import '../services/guest_service.dart';
 import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
 import '../services/tts_service.dart';
+import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
@@ -29,6 +30,11 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _index = 0;
   Timer? _midnightTimer;
+
+  final GlobalKey _suggestionFabKey = GlobalKey();
+  final GlobalKey _pantryNavKey = GlobalKey();
+  final GlobalKey _logNavKey = GlobalKey();
+  final GlobalKey _progressNavKey = GlobalKey();
 
   @override
   void initState() {
@@ -63,12 +69,29 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       if (GuestService.instance.pendingProfilePrompt && mounted) {
         await GuestService.instance.setPendingProfilePrompt(false);
         _showCompleteProfileBottomSheet();
+      } else {
+        _checkTutorial();
       }
     });
   }
 
-  void _showCompleteProfileBottomSheet() {
-    showModalBottomSheet<void>(
+  void _checkTutorial() {
+    if (!mounted) return;
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) {
+        TutorialService.instance.showTutorialIfNeeded(
+          context: context,
+          suggestionKey: _suggestionFabKey,
+          pantryKey: _pantryNavKey,
+          logKey: _logNavKey,
+          progressKey: _progressNavKey,
+        );
+      }
+    });
+  }
+
+  Future<void> _showCompleteProfileBottomSheet() async {
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
@@ -144,6 +167,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         ),
       ),
     );
+    _checkTutorial();
   }
 
   @override
@@ -208,6 +232,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final lowPantryCount = context.select<HealthProvider, int>(
+      (h) => h.pantry.where((i) => i.isLow).length,
+    );
+    final hasLowPantry = lowPantryCount >= 3;
+
     return Scaffold(
       body: Column(
         children: [
@@ -239,28 +268,47 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         child: NavigationBar(
           selectedIndex: _index,
           onDestinationSelected: _onNav,
-          destinations: const [
-            NavigationDestination(
+          destinations: [
+            const NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home_rounded),
               label: 'Home',
             ),
             NavigationDestination(
-              icon: Icon(Icons.add_circle_outline_rounded),
-              selectedIcon: Icon(Icons.add_circle_rounded),
+              icon: KeyedSubtree(
+                key: _logNavKey,
+                child: const Icon(Icons.add_circle_outline_rounded),
+              ),
+              selectedIcon: const Icon(Icons.add_circle_rounded),
               label: 'Log',
             ),
             NavigationDestination(
-              icon: Icon(Icons.insights_outlined),
-              selectedIcon: Icon(Icons.insights_rounded),
+              icon: KeyedSubtree(
+                key: _progressNavKey,
+                child: const Icon(Icons.insights_outlined),
+              ),
+              selectedIcon: const Icon(Icons.insights_rounded),
               label: 'Progress',
             ),
             NavigationDestination(
-              icon: Icon(Icons.kitchen_outlined),
-              selectedIcon: Icon(Icons.kitchen_rounded),
+              icon: Badge(
+                isLabelVisible: hasLowPantry,
+                backgroundColor: AppColors.behind,
+                smallSize: 8,
+                child: KeyedSubtree(
+                  key: _pantryNavKey,
+                  child: const Icon(Icons.kitchen_outlined),
+                ),
+              ),
+              selectedIcon: Badge(
+                isLabelVisible: hasLowPantry,
+                backgroundColor: AppColors.behind,
+                smallSize: 8,
+                child: const Icon(Icons.kitchen_rounded),
+              ),
               label: 'Pantry',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.calendar_today_outlined),
               selectedIcon: Icon(Icons.calendar_today_rounded),
               label: 'History',
@@ -272,7 +320,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   late final _pages = <Widget>[
-    const HomeScreen(),
+    HomeScreen(suggestionFabKey: _suggestionFabKey),
     const LogEntryScreen(),
     const ProgressScreen(),
     const PantryScreen(),

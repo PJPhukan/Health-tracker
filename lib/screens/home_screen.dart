@@ -21,7 +21,8 @@ import 'subscription_screen.dart';
 import 'suggestion_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.suggestionFabKey});
+  final GlobalKey? suggestionFabKey;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -65,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     return Scaffold(
       floatingActionButton: _GlowFab(
+        key: widget.suggestionFabKey,
         hasTodaySuggestion: provider.hasTodaySuggestion,
         onPressed: () {
           final guest = context.read<GuestService>();
@@ -359,7 +361,7 @@ class _PremiumUpsellBannerState extends State<_PremiumUpsellBanner> {
 // ─── GLOW FAB ───────────────────────────────────────────────────────────────
 
 class _GlowFab extends StatelessWidget {
-  const _GlowFab({required this.onPressed, required this.hasTodaySuggestion});
+  const _GlowFab({super.key, required this.onPressed, required this.hasTodaySuggestion});
   final VoidCallback onPressed;
 
   /// Once today's suggestion exists, the FAB relabels to make clear a tap
