@@ -187,15 +187,19 @@ class _QuickStartFlowState extends State<QuickStartFlow> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _buildScreen1Kitchen(),
-            _buildScreen2Goal(),
-            _buildScreen3Suggestion(),
-          ],
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: SafeArea(
+          child: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildScreen1Kitchen(),
+              _buildScreen2Goal(),
+              _buildScreen3Suggestion(),
+            ],
+          ),
         ),
       ),
     );

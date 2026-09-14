@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_strings.dart';
 import '../services/connectivity_service.dart';
 import '../theme/app_theme.dart';
 
@@ -33,7 +34,7 @@ class OfflineBanner extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        "You're offline — showing cached data",
+                        AppStrings.offlineBannerText,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: AppColors.behind,
                               fontWeight: FontWeight.w600,

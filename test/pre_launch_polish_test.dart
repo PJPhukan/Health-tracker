@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:health_tracker/constants/app_strings.dart';
 import 'package:health_tracker/services/streak_milestone_service.dart';
 import 'package:health_tracker/services/tutorial_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,6 +61,20 @@ void main() {
       await StreakMilestoneService.instance.resetForTesting();
       final celebrated = await StreakMilestoneService.instance.hasCelebratedMilestone(3);
       expect(celebrated, isFalse);
+    });
+  });
+
+  group('AppStrings', () {
+    test('contains non-empty essential user copy', () {
+      expect(AppStrings.appName, equals('Stock Plate'));
+      expect(AppStrings.offlineBannerText, isNotEmpty);
+      expect(AppStrings.offlineSuggestionError, isNotEmpty);
+      expect(AppStrings.networkTimeoutMessage, equals('That took longer than expected. Try again?'));
+      expect(AppStrings.historyEmptyTitle, isNotEmpty);
+      expect(AppStrings.pantryEmptyTitle, isNotEmpty);
+      expect(AppStrings.disclaimerMedicalNotice, isNotEmpty);
+      expect(AppStrings.privacyPolicyUrl, startsWith('https://'));
+      expect(AppStrings.termsOfServiceUrl, startsWith('https://'));
     });
   });
 }

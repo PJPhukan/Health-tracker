@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_strings.dart';
 import '../models/models.dart';
 import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
@@ -81,10 +82,9 @@ class _HistoryScreenState extends State<HistoryScreen>
                 if (dates.isEmpty) {
                   return EmptyState(
                     icon: Icons.restaurant_outlined,
-                    title: 'Nothing logged yet',
-                    message:
-                        'Start by logging your first meal to build your activity history.',
-                    buttonText: 'Log a meal',
+                    title: AppStrings.historyEmptyTitle,
+                    message: AppStrings.historyEmptySubtitle,
+                    buttonText: AppStrings.historyEmptyAction,
                     onButtonPressed: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(
@@ -99,7 +99,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                      AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
+                      AppSpacing.lg, AppSpacing.lg, 96),
                   itemCount: dates.length,
                   separatorBuilder: (_, __) =>
                       const SizedBox(height: AppSpacing.sm),

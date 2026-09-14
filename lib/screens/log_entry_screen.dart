@@ -86,30 +86,34 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Gradient header
-          _LogHeader(
-            labels: _labels,
-            icons: _icons,
-            selected: _tab,
-            onChanged: (i) => setState(() => _tab = i),
-          ),
-          Expanded(
-            child: IndexedStack(
-              index: _tab,
-              children: [
-                _MealForm(
-                    onSaved: _afterSave, autoStartVoice: widget.autoStartVoice),
-                _WorkoutForm(onSaved: _afterSave),
-                _SleepForm(onSaved: _afterSave),
-                _WeightForm(onSaved: _afterSave),
-                _StepsForm(onSaved: _afterSave),
-              ],
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Gradient header
+            _LogHeader(
+              labels: _labels,
+              icons: _icons,
+              selected: _tab,
+              onChanged: (i) => setState(() => _tab = i),
             ),
-          ),
-        ],
+            Expanded(
+              child: IndexedStack(
+                index: _tab,
+                children: [
+                  _MealForm(
+                      onSaved: _afterSave, autoStartVoice: widget.autoStartVoice),
+                  _WorkoutForm(onSaved: _afterSave),
+                  _SleepForm(onSaved: _afterSave),
+                  _WeightForm(onSaved: _afterSave),
+                  _StepsForm(onSaved: _afterSave),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -152,6 +156,15 @@ class _LogHeader extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  if (Navigator.canPop(context)) ...[
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
                   Container(
                     width: 44,
                     height: 44,
@@ -235,8 +248,8 @@ class _LogHeader extends StatelessWidget {
 // Shared form scaffolding
 // ---------------------------------------------------------------------------
 
-/// Body + sticky full-width save button, with a disabled state.
-class _FormScaffold extends StatelessWidget {
+/// Body + sticky full-width save button, with a disabled state and loading spinner.
+class _FormScaffold extends StatefulWidget {
   const _FormScaffold({
     required this.fields,
     required this.saveLabel,
@@ -250,15 +263,23 @@ class _FormScaffold extends StatelessWidget {
   final Future<void> Function() onSave;
 
   @override
+  State<_FormScaffold> createState() => _FormScaffoldState();
+}
+
+class _FormScaffoldState extends State<_FormScaffold> {
+  bool _saving = false;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Expanded(
           child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.lg),
             children: [
-              for (final f in fields) ...[
+              for (final f in widget.fields) ...[
                 f,
                 const SizedBox(height: AppSpacing.lg),
               ],
@@ -269,9 +290,31 @@ class _FormScaffold extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.lg),
-          child: FilledButton(
-            onPressed: canSave ? onSave : null,
-            child: Text(saveLabel),
+          child: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              onPressed: (widget.canSave && !_saving)
+                  ? () async {
+                      setState(() => _saving = true);
+                      try {
+                        await widget.onSave();
+                      } finally {
+                        if (mounted) setState(() => _saving = false);
+                      }
+                    }
+                  : null,
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(widget.saveLabel),
+            ),
           ),
         ),
       ],

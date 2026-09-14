@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -112,9 +113,14 @@ available. Keep it under 130 words.
     try {
       final text = await _callGemini(prompt);
       return SuggestionResult(prompt: prompt, text: text);
+    } on TimeoutException {
+      throw AiException("That took longer than expected. Try again?");
     } on AiException {
       rethrow;
     } catch (e) {
+      if (e is TimeoutException) {
+        throw AiException("That took longer than expected. Try again?");
+      }
       // Network error, timeout, bad JSON, etc. — no fallback, surface a
       // clean error so the UI can offer a retry.
       throw AiException("Couldn't get suggestion, try again.");

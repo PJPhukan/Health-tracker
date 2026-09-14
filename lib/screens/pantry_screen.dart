@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_strings.dart';
+
 import '../models/models.dart';
 import '../providers/health_provider.dart';
 import '../theme/app_theme.dart';
@@ -108,50 +110,54 @@ class _PantryScreenState extends State<PantryScreen>
     final lowCount = items.where((i) => i.isLow).length;
 
     return Scaffold(
-      body: Column(
-        children: [
-          GradientHeader(
-            title: 'Pantry',
-            subtitle: items.isEmpty
-                ? 'Keep ingredients ready for your next meal'
-                : '${items.length} item${items.length == 1 ? '' : 's'} in your kitchen',
-            trailing: _RestockAction(lowCount: lowCount),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
-            child: StaggeredEntrance(
-              animation: _entrance,
-              index: 0,
-              child: _AddPantryCard(
-                nameController: _name,
-                quantityController: _qty,
-                onAdd: _add,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Column(
+          children: [
+            GradientHeader(
+              title: 'Pantry',
+              subtitle: items.isEmpty
+                  ? 'Keep ingredients ready for your next meal'
+                  : '${items.length} item${items.length == 1 ? '' : 's'} in your kitchen',
+              trailing: _RestockAction(lowCount: lowCount),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
+              child: StaggeredEntrance(
+                animation: _entrance,
+                index: 0,
+                child: _AddPantryCard(
+                  nameController: _name,
+                  quantityController: _qty,
+                  onAdd: _add,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: items.isEmpty
-                ? EmptyState(
-                    icon: Icons.kitchen_rounded,
-                    title: 'Your pantry is empty',
-                    message:
-                        "Add what's in your kitchen to get better suggestions.",
-                    buttonText: 'Set up pantry',
-                    onButtonPressed: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const PantryOnboardingScreen(),
-                        ),
-                      );
-                      if (context.mounted) {
-                        context.read<HealthProvider>().loadPantry();
-                      }
-                    },
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xl),
+            Expanded(
+              child: items.isEmpty
+                  ? EmptyState(
+                      icon: Icons.kitchen_rounded,
+                      title: AppStrings.pantryEmptyTitle,
+                      message: AppStrings.pantryEmptySubtitle,
+                      buttonText: AppStrings.pantryEmptyAction,
+                      onButtonPressed: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PantryOnboardingScreen(),
+                          ),
+                        );
+                        if (context.mounted) {
+                          context.read<HealthProvider>().loadPantry();
+                        }
+                      },
+                    )
+                  : ListView.separated(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg, 0, AppSpacing.lg, 96),
                     itemCount: items.length + 1,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: AppSpacing.sm),
@@ -182,8 +188,9 @@ class _PantryScreenState extends State<PantryScreen>
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Top-right pantry action: badges the low-stock count, opens [RestockScreen].

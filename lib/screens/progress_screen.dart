@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_strings.dart';
 import '../models/models.dart';
 import '../providers/health_provider.dart';
 import '../services/streak_calculator.dart';
@@ -63,7 +64,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                        AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
+                        AppSpacing.lg, AppSpacing.lg, 96),
                     children: [
                       _StreakRow(data: data),
                       if (!data.hasEnoughDataForCharts)
@@ -72,8 +73,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                           child: EmptyState(
                             icon: Icons.show_chart_rounded,
                             title: 'No trends yet',
-                            message:
-                                'Keep logging daily — your progress charts will appear here after 3 days of data.',
+                            message: AppStrings.progressEmptyMessage,
                           ),
                         )
                       else ...[

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/app_strings.dart';
 import '../database/health_repository.dart';
 import '../database/sync_service.dart';
 import '../models/models.dart';
@@ -652,8 +653,7 @@ class HealthProvider extends ChangeNotifier {
   Future<void> _generateAndCache() async {
     if (ConnectivityService.instance.isOffline) {
       _suggestionStatus = SuggestionStatus.error;
-      _suggestionError =
-          "You need an internet connection to get suggestions. Your logged data is saved and ready for when you're back online.";
+      _suggestionError = AppStrings.offlineSuggestionError;
       notifyListeners();
       return;
     }
@@ -676,11 +676,10 @@ class HealthProvider extends ChangeNotifier {
           e.toString().toLowerCase().contains('network') ||
           e.toString().toLowerCase().contains('failed host lookup') ||
           e.toString().toLowerCase().contains('connection')) {
-        _suggestionError =
-            "You need an internet connection to get suggestions. Your logged data is saved and ready for when you're back online.";
+        _suggestionError = AppStrings.offlineSuggestionError;
       } else {
         _suggestionError =
-            e is AiException ? e.message : "Couldn't get suggestion, try again.";
+            e is AiException ? e.message : AppStrings.suggestionGenericError;
       }
       if (kDebugMode) debugPrint('generate suggestion failed: $e');
     }
