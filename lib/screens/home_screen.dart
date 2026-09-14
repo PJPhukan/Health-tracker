@@ -8,11 +8,14 @@ import '../models/user_profile.dart';
 import '../providers/health_provider.dart';
 import '../providers/profile_controller.dart';
 import '../services/guest_service.dart';
+import '../services/streak_calculator.dart';
+import '../services/streak_milestone_service.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/guest_gate_dialog.dart';
 import '../widgets/skeletons.dart';
+import '../widgets/streak_milestone_sheet.dart';
 import '../widgets/summary_widgets.dart';
 import 'auth/signup_screen.dart';
 import 'log_entry_screen.dart';
@@ -34,6 +37,27 @@ class _HomeScreenState extends State<HomeScreen>
     vsync: this,
     duration: AppAnimations.entranceDuration,
   )..forward();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkStreakMilestone());
+  }
+
+  Future<void> _checkStreakMilestone() async {
+    if (!mounted) return;
+    try {
+      final progressData = await context.read<HealthProvider>().progressData();
+      final streak = StreakCalculator.loggingStreak(progressData.mealLoggedDates);
+      final milestone =
+          await StreakMilestoneService.instance.checkUncelebratedMilestone(streak);
+      if (milestone != null && mounted) {
+        await showStreakMilestoneSheet(context, milestone);
+      }
+    } catch (_) {
+      // Ignored if data not yet available
+    }
+  }
 
   @override
   void dispose() {
@@ -529,7 +553,7 @@ class _RoutineBanner extends StatelessWidget {
                   context.read<HealthProvider>().dismissRoutineSuggestion(slot);
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) =>
-                        const LogEntryScreen(initialTab: 0, autoStartVoice: true),
+                        const LogEntryScreen(initialTab: 0, autoStartVoice: true, popOnSave: true),
                   ));
                 },
                 child: const Text('No, something else'),

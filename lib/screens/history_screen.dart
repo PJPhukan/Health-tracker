@@ -88,7 +88,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                     onButtonPressed: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const LogEntryScreen(),
+                          builder: (_) => const LogEntryScreen(popOnSave: true),
                         ),
                       );
                       if (mounted) {

@@ -147,6 +147,11 @@ class _PulsingBrainIconState extends State<_PulsingBrainIcon>
     duration: const Duration(milliseconds: 1600),
   )..repeat(reverse: true);
 
+  late final Animation<double> _anim = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeInOutCubic,
+  );
+
   @override
   void dispose() {
     _c.dispose();
@@ -156,9 +161,9 @@ class _PulsingBrainIconState extends State<_PulsingBrainIcon>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _c,
+      animation: _anim,
       builder: (context, _) {
-        final v = CurvedAnimation(parent: _c, curve: Curves.easeInOut).value;
+        final v = _anim.value;
         return Container(
           width: 100,
           height: 100,

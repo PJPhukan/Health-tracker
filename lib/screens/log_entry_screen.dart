@@ -15,6 +15,7 @@ class LogEntryScreen extends StatefulWidget {
     super.key,
     this.initialTab = 0,
     this.autoStartVoice = false,
+    this.popOnSave = false,
   });
 
   /// Which pill is selected on open — see [_LogEntryScreenState._labels].
@@ -23,6 +24,9 @@ class LogEntryScreen extends StatefulWidget {
   /// Starts the meal tab's mic listening automatically once the screen is up
   /// — used by the "log it" / "something else" routine-suggestion banner.
   final bool autoStartVoice;
+
+  /// Whether to pop this screen off the navigation stack after saving.
+  final bool popOnSave;
 
   @override
   State<LogEntryScreen> createState() => _LogEntryScreenState();
@@ -73,6 +77,9 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         initialSlot: suggestion.mealType,
         initialDescription: suggestion.description,
       );
+    }
+    if (widget.popOnSave && mounted && Navigator.canPop(context)) {
+      Navigator.of(context).pop();
     }
   }
 
@@ -448,30 +455,58 @@ class _Field extends StatelessWidget {
   }
 }
 
-/// Brief centered checkmark with animation, auto-dismisses.
+/// Brief centered checkmark with scale up, hold, and fade animation.
 class _SavedFlash extends StatefulWidget {
   const _SavedFlash();
   @override
   State<_SavedFlash> createState() => _SavedFlashState();
 }
 
-class _SavedFlashState extends State<_SavedFlash> {
+class _SavedFlashState extends State<_SavedFlash>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 950),
+  );
+  late final Animation<double> _scale = Tween<double>(begin: 0.5, end: 1.0).animate(
+    CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.35, curve: Curves.easeOutBack),
+    ),
+  );
+  late final Animation<double> _fade = Tween<double>(begin: 1.0, end: 0.0).animate(
+    CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.75, 1.0, curve: Curves.easeIn),
+    ),
+  );
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 750), () {
+    _controller.forward().then((_) {
       if (mounted) Navigator.of(context).pop();
     });
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Center(
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.6, end: 1),
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutBack,
-        builder: (context, v, child) => Transform.scale(scale: v, child: child),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) => Opacity(
+          opacity: _fade.value,
+          child: Transform.scale(
+            scale: _scale.value,
+            child: child,
+          ),
+        ),
         child: Container(
           padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
