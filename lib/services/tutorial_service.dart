@@ -42,6 +42,8 @@ class TutorialService {
         keyTarget: suggestionKey,
         shape: ShapeLightFocus.RRect,
         radius: 28,
+        enableTargetTab: true,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -60,6 +62,8 @@ class TutorialService {
         identify: "step_pantry",
         keyTarget: pantryKey,
         shape: ShapeLightFocus.Circle,
+        enableTargetTab: true,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -78,6 +82,8 @@ class TutorialService {
         identify: "step_log",
         keyTarget: logKey,
         shape: ShapeLightFocus.Circle,
+        enableTargetTab: true,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -96,6 +102,8 @@ class TutorialService {
         identify: "step_progress",
         keyTarget: progressKey,
         shape: ShapeLightFocus.Circle,
+        enableTargetTab: true,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -112,13 +120,25 @@ class TutorialService {
       ),
     ];
 
-    final tutorial = TutorialCoachMark(
+    late final TutorialCoachMark tutorial;
+    tutorial = TutorialCoachMark(
       targets: targets,
       colorShadow: AppColors.tealDeep,
       textSkip: "Skip",
       paddingFocus: 8,
       opacityShadow: 0.85,
       hideSkip: true, // We have a dedicated Skip button in our custom card
+      onClickTarget: (target) {
+        if (target.identify == "step_suggestion" || target.identify == "step_progress") {
+          markTutorialSeen();
+          tutorial.finish();
+        } else {
+          tutorial.next();
+        }
+      },
+      onClickOverlay: (target) {
+        tutorial.next();
+      },
       onFinish: () => markTutorialSeen(),
       onSkip: () {
         markTutorialSeen();
